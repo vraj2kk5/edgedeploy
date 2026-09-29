@@ -1,0 +1,35 @@
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #0f172a;
+  color: #f8fafc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+.container {
+  text-align: center;
+  padding: 2rem;
+  background: #1e293b;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  border: 1px solid #334155;
+}
+h1 {
+  color: #38bdf8;
+  margin-bottom: 0.5rem;
+}
+p {
+  color: #94a3b8;
+}
+.badge {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #10b981;
+  color: #ffffff;
+  border-radius: 9999px;
+  font-weight: bold;
+  font-size: 0.875rem;
+}

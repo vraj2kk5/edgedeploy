@@ -1,0 +1,13 @@
+{
+  "name": "@edgedeploy/database",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@edgedeploy/shared": "*",
+    "bcryptjs": "^2.4.3",
+    "mysql2": "^3.12.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6"
+  }
+}
