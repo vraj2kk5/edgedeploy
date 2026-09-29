@@ -16,9 +16,9 @@
     "backend": "npm run dev --workspace=backend",
     "origin": "npm run dev --workspace=origin",
     "gateway": "npm run dev --workspace=gateway",
-    "edge:1": "NODE_ID=edge-1 PORT=4101 REGION=Mumbai npm run dev --workspace=edge-node",
-    "edge:2": "NODE_ID=edge-2 PORT=4102 REGION=Ahmedabad npm run dev --workspace=edge-node",
-    "edge:3": "NODE_ID=edge-3 PORT=4103 REGION=Delhi npm run dev --workspace=edge-node",
+    "edge:1": "cross-env NODE_ID=edge-1 PORT=4101 REGION=Mumbai npm run dev --workspace=edge-node",
+    "edge:2": "cross-env NODE_ID=edge-2 PORT=4102 REGION=Ahmedabad npm run dev --workspace=edge-node",
+    "edge:3": "cross-env NODE_ID=edge-3 PORT=4103 REGION=Delhi npm run dev --workspace=edge-node",
     "edges": "concurrently -k -p \"[{name}]\" -c \"blue,green,magenta\" \"npm run edge:1\" \"npm run edge:2\" \"npm run edge:3\"",
     "frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspaces",
@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",
     "vitest": "^3.0.7"
