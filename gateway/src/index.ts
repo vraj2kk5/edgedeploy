@@ -195,147 +195,152 @@ app.get('/health', async () => {
   return { status: 'healthy', service: 'gateway', healthyEdges: edgeNodePool.filter((n) => n.status === 'HEALTHY').length };
 });
 
-app.all('*', async (request, reply) => {
-  const startTime = Date.now();
-  const clientIp = (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || request.ip || '127.0.0.1';
+// Proxy HTTP routes explicitly (excluding OPTIONS to avoid cors plugin collision)
+app.route({
+  method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'],
+  url: '*',
+  handler: async (request, reply) => {
+    const startTime = Date.now();
+    const clientIp = (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || request.ip || '127.0.0.1';
 
-  // Step 1: TOKEN BUCKET RATE LIMITER (Runs First)
-  const rlResult = checkRateLimit(clientIp);
-  if (!rlResult.allowed) {
-    bufferRequestLog({
-      ts: new Date(),
-      client_ip: clientIp,
-      project_id: null,
-      domain: request.headers.host || 'localhost',
-      path: request.url,
-      method: request.method,
-      status_code: 429,
-      latency_ms: Date.now() - startTime,
-      edge_node_id: null,
-      cache_result: 'NONE',
-      bytes: 0,
-    });
-
-    return reply
-      .status(429)
-      .headers({
-        'Retry-After': String(rlResult.retryAfterSeconds),
-      })
-      .send({
-        error: {
-          code: 429,
-          message: `Too many requests. Retry in ${rlResult.retryAfterSeconds} seconds.`,
-          reason: rlResult.reason,
-        },
+    // Step 1: TOKEN BUCKET RATE LIMITER (Runs First)
+    const rlResult = checkRateLimit(clientIp);
+    if (!rlResult.allowed) {
+      bufferRequestLog({
+        ts: new Date(),
+        client_ip: clientIp,
+        project_id: null,
+        domain: request.headers.host || 'localhost',
+        path: request.url,
+        method: request.method,
+        status_code: 429,
+        latency_ms: Date.now() - startTime,
+        edge_node_id: null,
+        cache_result: 'NONE',
+        bytes: 0,
       });
-  }
 
-  // Step 2: PROJECT RESOLUTION (by Host header or path prefix)
-  const host = request.headers.host || '';
-  let projectId: number | null = null;
-  let domainName = host;
-  let targetPath = request.url;
-
-  // Path prefix fallback: /_site/<slug>/... or /site/<slug>/...
-  const pathPrefixMatch = request.url.match(/^\/(_site|site)\/([^\/]+)(.*)$/);
-  if (pathPrefixMatch) {
-    const slug = pathPrefixMatch[2];
-    targetPath = pathPrefixMatch[3] || '/';
-    const proj = await queryOne<{ id: number }>('SELECT id FROM Projects WHERE slug = ?', [slug]);
-    if (proj) {
-      projectId = proj.id;
-      domainName = `${slug}.localhost`;
-    }
-  } else {
-    // Domain Host resolution: <slug>.localhost:8080
-    const hostname = host.split(':')[0];
-    const domainRow = await queryOne<{ project_id: number }>('SELECT project_id FROM Domains WHERE hostname = ?', [hostname]);
-    if (domainRow) {
-      projectId = domainRow.project_id;
-    } else {
-      // Slug prefix attempt
-      const slugCandidate = hostname.split('.')[0];
-      const proj = await queryOne<{ id: number }>('SELECT id FROM Projects WHERE slug = ?', [slugCandidate]);
-      if (proj) {
-        projectId = proj.id;
-      }
-    }
-  }
-
-  if (!projectId) {
-    return reply.status(404).send({ error: { code: 404, message: 'Project not found for host/path' } });
-  }
-
-  // Step 3: LOAD BALANCER & EDGE PROXY
-  const preferredRegion = request.headers['x-edge-region'] as string | undefined;
-  let edgeNode = selectEdgeNode(preferredRegion);
-
-  if (!edgeNode) {
-    return reply.status(503).send({ error: { code: 503, message: 'Service Unavailable: No healthy edge nodes available' } });
-  }
-
-  const cleanPath = targetPath === '' || targetPath === '/' ? 'index.html' : targetPath.replace(/^\//, '');
-  let edgeUrl = `http://localhost:${edgeNode.port}/serve/${projectId}/${cleanPath}`;
-
-  try {
-    let edgeRes = await fetch(edgeUrl, {
-      method: request.method,
-      headers: {
-        'if-none-match': request.headers['if-none-match'] || '',
-      },
-    });
-
-    // Retry once on another edge node if edge fails mid-request
-    if (!edgeRes.ok && edgeRes.status >= 500) {
-      edgeNode.status = 'UNHEALTHY';
-      const fallbackNode = selectEdgeNode();
-      if (fallbackNode) {
-        edgeNode = fallbackNode;
-        edgeUrl = `http://localhost:${edgeNode.port}/serve/${projectId}/${cleanPath}`;
-        edgeRes = await fetch(edgeUrl, {
-          method: request.method,
-          headers: {
-            'if-none-match': request.headers['if-none-match'] || '',
+      return reply
+        .status(429)
+        .headers({
+          'Retry-After': String(rlResult.retryAfterSeconds),
+        })
+        .send({
+          error: {
+            code: 429,
+            message: `Too many requests. Retry in ${rlResult.retryAfterSeconds} seconds.`,
+            reason: rlResult.reason,
           },
         });
+    }
+
+    // Step 2: PROJECT RESOLUTION (by Host header or path prefix)
+    const host = request.headers.host || '';
+    let projectId: number | null = null;
+    let domainName = host;
+    let targetPath = request.url;
+
+    // Path prefix fallback: /_site/<slug>/... or /site/<slug>/...
+    const pathPrefixMatch = request.url.match(/^\/(_site|site)\/([^\/]+)(.*)$/);
+    if (pathPrefixMatch) {
+      const slug = pathPrefixMatch[2];
+      targetPath = pathPrefixMatch[3] || '/';
+      const proj = await queryOne<{ id: number }>('SELECT id FROM Projects WHERE slug = ?', [slug]);
+      if (proj) {
+        projectId = proj.id;
+        domainName = `${slug}.localhost`;
+      }
+    } else {
+      // Domain Host resolution: <slug>.localhost:8080
+      const hostname = host.split(':')[0];
+      const domainRow = await queryOne<{ project_id: number }>('SELECT project_id FROM Domains WHERE hostname = ?', [hostname]);
+      if (domainRow) {
+        projectId = domainRow.project_id;
+      } else {
+        // Slug prefix attempt
+        const slugCandidate = hostname.split('.')[0];
+        const proj = await queryOne<{ id: number }>('SELECT id FROM Projects WHERE slug = ?', [slugCandidate]);
+        if (proj) {
+          projectId = proj.id;
+        }
       }
     }
 
-    const cacheResult = (edgeRes.headers.get('x-cache') as any) || 'NONE';
-    const etag = edgeRes.headers.get('etag') || '';
-    const contentType = edgeRes.headers.get('content-type') || 'text/html';
+    if (!projectId) {
+      return reply.status(404).send({ error: { code: 404, message: 'Project not found for host/path' } });
+    }
 
-    const bodyBuffer = Buffer.from(await edgeRes.arrayBuffer());
+    // Step 3: LOAD BALANCER & EDGE PROXY
+    const preferredRegion = request.headers['x-edge-region'] as string | undefined;
+    let edgeNode = selectEdgeNode(preferredRegion);
 
-    bufferRequestLog({
-      ts: new Date(),
-      client_ip: clientIp,
-      project_id: projectId,
-      domain: domainName,
-      path: cleanPath,
-      method: request.method,
-      status_code: edgeRes.status,
-      latency_ms: Date.now() - startTime,
-      edge_node_id: edgeNode.id,
-      cache_result: cacheResult,
-      bytes: bodyBuffer.length,
-    });
+    if (!edgeNode) {
+      return reply.status(503).send({ error: { code: 503, message: 'Service Unavailable: No healthy edge nodes available' } });
+    }
 
-    return reply
-      .status(edgeRes.status)
-      .headers({
-        'Content-Type': contentType,
-        'X-Cache': cacheResult,
-        'X-Edge-Node': edgeNode.name,
-        'X-Served-By': `EdgeDeploy-Gateway (${edgeNode.name}:${edgeNode.region})`,
-        ETag: etag,
-        'Cache-Control': edgeRes.headers.get('cache-control') || 'public, max-age=60',
-      })
-      .send(bodyBuffer);
-  } catch (err: any) {
-    logger.error(`[Gateway] Error proxying to edge ${edgeNode.name}:${edgeNode.port}: ${err.message}`);
-    return reply.status(502).send({ error: { code: 502, message: 'Bad Gateway: Proxy to edge node failed' } });
-  }
+    const cleanPath = targetPath === '' || targetPath === '/' ? 'index.html' : targetPath.replace(/^\//, '');
+    let edgeUrl = `http://localhost:${edgeNode.port}/serve/${projectId}/${cleanPath}`;
+
+    try {
+      let edgeRes = await fetch(edgeUrl, {
+        method: request.method,
+        headers: {
+          'if-none-match': request.headers['if-none-match'] || '',
+        },
+      });
+
+      // Retry once on another edge node if edge fails mid-request
+      if (!edgeRes.ok && edgeRes.status >= 500) {
+        edgeNode.status = 'UNHEALTHY';
+        const fallbackNode = selectEdgeNode();
+        if (fallbackNode) {
+          edgeNode = fallbackNode;
+          edgeUrl = `http://localhost:${edgeNode.port}/serve/${projectId}/${cleanPath}`;
+          edgeRes = await fetch(edgeUrl, {
+            method: request.method,
+            headers: {
+              'if-none-match': request.headers['if-none-match'] || '',
+            },
+          });
+        }
+      }
+
+      const cacheResult = (edgeRes.headers.get('x-cache') as any) || 'NONE';
+      const etag = edgeRes.headers.get('etag') || '';
+      const contentType = edgeRes.headers.get('content-type') || 'text/html';
+
+      const bodyBuffer = Buffer.from(await edgeRes.arrayBuffer());
+
+      bufferRequestLog({
+        ts: new Date(),
+        client_ip: clientIp,
+        project_id: projectId,
+        domain: domainName,
+        path: cleanPath,
+        method: request.method,
+        status_code: edgeRes.status,
+        latency_ms: Date.now() - startTime,
+        edge_node_id: edgeNode.id,
+        cache_result: cacheResult,
+        bytes: bodyBuffer.length,
+      });
+
+      return reply
+        .status(edgeRes.status)
+        .headers({
+          'Content-Type': contentType,
+          'X-Cache': cacheResult,
+          'X-Edge-Node': edgeNode.name,
+          'X-Served-By': `EdgeDeploy-Gateway (${edgeNode.name}:${edgeNode.region})`,
+          ETag: etag,
+          'Cache-Control': edgeRes.headers.get('cache-control') || 'public, max-age=60',
+        })
+        .send(bodyBuffer);
+    } catch (err: any) {
+      logger.error(`[Gateway] Error proxying to edge ${edgeNode.name}:${edgeNode.port}: ${err.message}`);
+      return reply.status(502).send({ error: { code: 502, message: 'Bad Gateway: Proxy to edge node failed' } });
+    }
+  },
 });
 
 async function start() {
