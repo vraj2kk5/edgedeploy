@@ -7,7 +7,6 @@ import { authRoutes } from './routes/auth.routes.js';
 import { adminUsersRoutes } from './routes/admin-users.routes.js';
 import { projectsRoutes } from './routes/projects.routes.js';
 import { webhookRoutes } from './routes/webhooks.routes.js';
-import { analyticsRoutes } from './routes/analytics.routes.js';
 import { adminRoutes } from './routes/admin.routes.js';
 
 export async function buildBackendApp(): Promise<FastifyInstance> {
@@ -40,7 +39,6 @@ export async function buildBackendApp(): Promise<FastifyInstance> {
   await app.register(adminUsersRoutes);
   await app.register(projectsRoutes);
   await app.register(webhookRoutes);
-  await app.register(analyticsRoutes);
   await app.register(adminRoutes);
 
   // Centralized error handler
