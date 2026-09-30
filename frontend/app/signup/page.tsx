@@ -24,7 +24,15 @@ export default function SignupPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `Server returned status ${res.status}`);
+      }
+
       if (!res.ok) {
         throw new Error(data.error?.message || 'Signup failed');
       }
@@ -33,7 +41,7 @@ export default function SignupPage() {
       localStorage.setItem('edgedeploy_user', JSON.stringify(data.user));
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Signup failed');
     } finally {
       setLoading(false);
     }
