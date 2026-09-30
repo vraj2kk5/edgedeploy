@@ -34,6 +34,18 @@ export async function buildBackendApp(): Promise<FastifyInstance> {
     return { status: 'healthy', service: 'control-plane', timestamp: new Date().toISOString() };
   });
 
+  // Root welcome route
+  app.get('/', async () => {
+    return {
+      service: 'EdgeDeploy Backend Control Plane API',
+      status: 'online',
+      version: '1.0.0',
+      dashboard: 'http://localhost:3000',
+      health: 'http://localhost:3001/health',
+      docs: 'REST API endpoints available under /api/*'
+    };
+  });
+
   // Register domain routes
   await app.register(authRoutes);
   await app.register(adminUsersRoutes);

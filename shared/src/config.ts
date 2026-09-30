@@ -6,6 +6,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 dotenv.config();
 
+// Determine root directory regardless of workspace working directory
+const monorepoRoot = path.resolve(__dirname, '..', '..');
+
 export const config = {
   db: {
     host: process.env.DB_HOST || '127.0.0.1',
@@ -42,7 +45,7 @@ export const config = {
     publicWebhookUrl: process.env.PUBLIC_WEBHOOK_URL || 'http://localhost:3001',
   },
   storage: {
-    root: path.resolve(process.cwd(), process.env.STORAGE_PATH || './storage'),
+    root: path.resolve(monorepoRoot, process.env.STORAGE_PATH || './storage'),
   },
   cache: {
     ttlSeconds: parseInt(process.env.CACHE_TTL_SECONDS || '60', 10),

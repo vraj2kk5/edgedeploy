@@ -121,6 +121,17 @@ app.get('/health', async () => {
   return { status: 'healthy', nodeId, port, region, cacheEntries: memoryCache.size, uptime: process.uptime() };
 });
 
+app.get('/', async () => {
+  return {
+    service: `EdgeDeploy Edge Node (${nodeId})`,
+    status: 'online',
+    nodeId,
+    region,
+    port,
+    health: `http://localhost:${port}/health`
+  };
+});
+
 // Cache Purge Endpoint
 app.post('/internal/purge', async (request, reply) => {
   const authHeader = request.headers['x-internal-token'];

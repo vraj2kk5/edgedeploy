@@ -240,15 +240,37 @@ app.route({
     let domainName = host;
     let targetPath = request.url;
 
-    // Path prefix fallback: /_site/<slug>/... or /site/<slug>/...
-    const pathPrefixMatch = request.url.match(/^\/(_site|site)\/([^\/]+)(.*)$/);
+    // Check if root '/' requested on Gateway directly
+    if (request.url === '/' || request.url === '') {
+      return reply.status(200).send({
+        service: 'EdgeDeploy Gateway Load Balancer',
+        status: 'online',
+        port: config.ports.gateway,
+        healthyEdges: edgeNodePool.filter((n) => n.status === 'HEALTHY').length,
+        usage: 'Access deployed sites via http://localhost:8080/serve/:projectId/ or http://<slug>.localhost:8080/',
+        dashboard: 'http://localhost:3000',
+        healthCheck: 'http://localhost:8080/health'
+      });
+    }
+
+    // Path prefix fallback: /_site/<slugOrId>/... or /site/<slugOrId>/... or /serve/<slugOrId>/...
+    const pathPrefixMatch = request.url.match(/^\/(_site|site|serve)\/([^\/]+)(.*)$/);
     if (pathPrefixMatch) {
-      const slug = pathPrefixMatch[2];
+      const slugOrId = pathPrefixMatch[2];
       targetPath = pathPrefixMatch[3] || '/';
-      const proj = await queryOne<{ id: number }>('SELECT id FROM Projects WHERE slug = ?', [slug]);
-      if (proj) {
-        projectId = proj.id;
-        domainName = `${slug}.localhost`;
+      
+      if (/^\d+$/.test(slugOrId)) {
+        const proj = await queryOne<{ id: number; slug: string }>('SELECT id, slug FROM Projects WHERE id = ?', [parseInt(slugOrId, 10)]);
+        if (proj) {
+          projectId = proj.id;
+          domainName = `${proj.slug}.localhost`;
+        }
+      } else {
+        const proj = await queryOne<{ id: number }>('SELECT id FROM Projects WHERE slug = ?', [slugOrId]);
+        if (proj) {
+          projectId = proj.id;
+          domainName = `${slugOrId}.localhost`;
+        }
       }
     } else {
       // Domain Host resolution: <slug>.localhost:8080

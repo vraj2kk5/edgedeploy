@@ -29,6 +29,16 @@ app.get('/health', async () => {
   return { status: 'healthy', service: 'origin', timestamp: new Date().toISOString() };
 });
 
+// Root welcome route
+app.get('/', async () => {
+  return {
+    service: 'EdgeDeploy Origin Storage Server',
+    status: 'online',
+    port: config.ports.origin,
+    health: 'http://localhost:4000/health'
+  };
+});
+
 // Serve site static files
 app.get('/sites/:projectId/*', async (request, reply) => {
   const authHeader = request.headers['x-internal-token'];

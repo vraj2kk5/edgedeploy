@@ -17,14 +17,14 @@ export function getPool(): mysql.Pool {
       queueLimit: 0,
       multipleStatements: true,
       timezone: 'Z',
-      connectTimeout: 10000,
+      connectTimeout: 15000,
     });
     logger.info(`[DB Pool] Initialized MySQL pool for ${config.db.user}@${config.db.host}:${config.db.port}/${config.db.database}`);
   }
   return pool;
 }
 
-export async function query<T = any>(sql: string, params: any[] = [], retries: number = 3): Promise<T[]> {
+export async function query<T = any>(sql: string, params: any[] = [], retries: number = 6): Promise<T[]> {
   const p = getPool();
   for (let i = 0; i < retries; i++) {
     try {
@@ -32,8 +32,8 @@ export async function query<T = any>(sql: string, params: any[] = [], retries: n
       return rows as T[];
     } catch (err: any) {
       if ((err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_CONNECTION_LOST') && i < retries - 1) {
-        logger.warn(`[DB Pool] Query attempt ${i + 1} failed (${err.code}). Retrying in 1s...`);
-        await new Promise((res) => setTimeout(res, 1000));
+        logger.warn(`[DB Pool] Query attempt ${i + 1} failed (${err.code}). Retrying in 2s...`);
+        await new Promise((res) => setTimeout(res, 2000));
         continue;
       }
       throw err;
@@ -47,7 +47,7 @@ export async function queryOne<T = any>(sql: string, params: any[] = []): Promis
   return rows.length > 0 ? rows[0] : null;
 }
 
-export async function execute(sql: string, params: any[] = [], retries: number = 3): Promise<mysql.ResultSetHeader> {
+export async function execute(sql: string, params: any[] = [], retries: number = 6): Promise<mysql.ResultSetHeader> {
   const p = getPool();
   for (let i = 0; i < retries; i++) {
     try {
@@ -55,8 +55,8 @@ export async function execute(sql: string, params: any[] = [], retries: number =
       return result as mysql.ResultSetHeader;
     } catch (err: any) {
       if ((err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_CONNECTION_LOST') && i < retries - 1) {
-        logger.warn(`[DB Pool] Execute attempt ${i + 1} failed (${err.code}). Retrying in 1s...`);
-        await new Promise((res) => setTimeout(res, 1000));
+        logger.warn(`[DB Pool] Execute attempt ${i + 1} failed (${err.code}). Retrying in 2s...`);
+        await new Promise((res) => setTimeout(res, 2000));
         continue;
       }
       throw err;
