@@ -17,16 +17,29 @@ export function getPool(): mysql.Pool {
       queueLimit: 0,
       multipleStatements: true,
       timezone: 'Z',
+      connectTimeout: 10000,
     });
     logger.info(`[DB Pool] Initialized MySQL pool for ${config.db.user}@${config.db.host}:${config.db.port}/${config.db.database}`);
   }
   return pool;
 }
 
-export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+export async function query<T = any>(sql: string, params: any[] = [], retries: number = 3): Promise<T[]> {
   const p = getPool();
-  const [rows] = await p.execute(sql, params);
-  return rows as T[];
+  for (let i = 0; i < retries; i++) {
+    try {
+      const [rows] = await p.execute(sql, params);
+      return rows as T[];
+    } catch (err: any) {
+      if ((err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_CONNECTION_LOST') && i < retries - 1) {
+        logger.warn(`[DB Pool] Query attempt ${i + 1} failed (${err.code}). Retrying in 1s...`);
+        await new Promise((res) => setTimeout(res, 1000));
+        continue;
+      }
+      throw err;
+    }
+  }
+  return [];
 }
 
 export async function queryOne<T = any>(sql: string, params: any[] = []): Promise<T | null> {
@@ -34,10 +47,22 @@ export async function queryOne<T = any>(sql: string, params: any[] = []): Promis
   return rows.length > 0 ? rows[0] : null;
 }
 
-export async function execute(sql: string, params: any[] = []): Promise<mysql.ResultSetHeader> {
+export async function execute(sql: string, params: any[] = [], retries: number = 3): Promise<mysql.ResultSetHeader> {
   const p = getPool();
-  const [result] = await p.execute(sql, params);
-  return result as mysql.ResultSetHeader;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const [result] = await p.execute(sql, params);
+      return result as mysql.ResultSetHeader;
+    } catch (err: any) {
+      if ((err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_CONNECTION_LOST') && i < retries - 1) {
+        logger.warn(`[DB Pool] Execute attempt ${i + 1} failed (${err.code}). Retrying in 1s...`);
+        await new Promise((res) => setTimeout(res, 1000));
+        continue;
+      }
+      throw err;
+    }
+  }
+  return { affectedRows: 0, insertId: 0 } as any;
 }
 
 export async function closePool(): Promise<void> {
