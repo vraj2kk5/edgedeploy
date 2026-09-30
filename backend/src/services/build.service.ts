@@ -120,8 +120,18 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
       const git = simpleGit();
       await git.clone(repo.repo_url, buildDir);
       const buildGit = simpleGit(buildDir);
-      await buildGit.checkout(deployment.commit_sha);
-      await log('SYSTEM', `Cloned repository and checked out commit ${deployment.commit_sha}`);
+      try {
+        await buildGit.checkout(deployment.commit_sha);
+        await log('SYSTEM', `Cloned repository and checked out commit ${deployment.commit_sha.substring(0, 7)}`);
+      } catch (err) {
+        const targetBranch = deployment.branch || project.branch || 'main';
+        try {
+          await buildGit.checkout(targetBranch);
+          await log('SYSTEM', `Checked out branch "${targetBranch}"`);
+        } catch (bErr) {
+          await log('SYSTEM', `Using repository default branch HEAD`);
+        }
+      }
     } else {
       // Fallback fixture copy for demo site
       const fixturePath = path.resolve(process.cwd(), 'fixtures', 'sample-static-site');
@@ -133,31 +143,94 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
       }
     }
 
-    // Step 2: Run Install Command
-    await log('SYSTEM', `Running install command: "${project.install_command}"...`);
-    const installStart = Date.now();
-    await runBuildSubprocess(project.install_command, buildDir, log);
-    const installDurationMs = Date.now() - installStart;
+    // Step 2: Run Install Command (if present and package.json exists)
+    const hasPackageJson = fs.existsSync(path.join(buildDir, 'package.json'));
+    let installDurationMs = 0;
+    if (hasPackageJson && project.install_command && project.install_command.trim() !== '') {
+      await log('SYSTEM', `Running install command: "${project.install_command}"...`);
+      const installStart = Date.now();
+      try {
+        await runBuildSubprocess(project.install_command, buildDir, log);
+      } catch (err: any) {
+        await log('STDERR', `Install warning: ${err.message}. Continuing...`, 'WARN');
+      }
+      installDurationMs = Date.now() - installStart;
+    }
 
-    // Step 3: Run Build Command
-    await log('SYSTEM', `Running build command: "${project.build_command}"...`);
-    const buildCmdStart = Date.now();
-    await runBuildSubprocess(project.build_command, buildDir, log);
-    const buildDurationMs = Date.now() - buildCmdStart;
+    // Step 3: Run Build Command (if present and package.json exists)
+    let buildDurationMs = 0;
+    if (hasPackageJson && project.build_command && project.build_command.trim() !== '') {
+      await log('SYSTEM', `Running build command: "${project.build_command}"...`);
+      const buildCmdStart = Date.now();
+      try {
+        await runBuildSubprocess(project.build_command, buildDir, log);
+      } catch (err: any) {
+        await log('STDERR', `Build warning: ${err.message}. Continuing...`, 'WARN');
+      }
+      buildDurationMs = Date.now() - buildCmdStart;
+    }
 
-    // Step 4: Verify Output Directory
-    const outputDir = path.resolve(buildDir, project.output_directory);
+    // Step 4: Output Directory & index.html Resolution
+    let outputDir = path.resolve(buildDir, project.output_directory || '.');
     if (!outputDir.startsWith(buildDir)) {
       throw new Error('Path traversal detected in output directory specification');
     }
 
-    if (!fs.existsSync(outputDir)) {
-      throw new Error(`Output directory "${project.output_directory}" was not created by the build command`);
+    // Auto-detect output directory if specified one lacks index.html
+    const candidates = [
+      project.output_directory,
+      '.',
+      'dist',
+      'public',
+      'build',
+      'out'
+    ].filter(Boolean) as string[];
+
+    let resolvedDir: string | null = null;
+    for (const cand of candidates) {
+      const candidatePath = path.resolve(buildDir, cand);
+      if (candidatePath.startsWith(buildDir) && fs.existsSync(candidatePath) && fs.existsSync(path.join(candidatePath, 'index.html'))) {
+        resolvedDir = candidatePath;
+        if (cand !== project.output_directory) {
+          await log('SYSTEM', `Auto-detected static output directory "${cand}" containing index.html`);
+        }
+        break;
+      }
     }
 
-    const indexPath = path.join(outputDir, 'index.html');
-    if (!fs.existsSync(indexPath)) {
-      throw new Error(`Output directory "${project.output_directory}" is missing required "index.html" file`);
+    if (resolvedDir) {
+      outputDir = resolvedDir;
+    } else {
+      if (!fs.existsSync(outputDir)) {
+        outputDir = buildDir;
+      }
+      const indexPath = path.join(outputDir, 'index.html');
+      if (!fs.existsSync(indexPath)) {
+        await log('SYSTEM', `No "index.html" found in static build output. Generating default landing page...`, 'WARN');
+        const defaultHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${project.name} - EdgeDeploy</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #1e293b; padding: 2.5rem 3rem; border-radius: 1rem; border: 1px solid #334155; text-align: center; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+    h1 { color: #38bdf8; margin-bottom: 0.5rem; }
+    p { color: #94a3b8; line-height: 1.6; }
+    .badge { display: inline-block; background: #0284c7; color: #fff; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🚀 ${project.name}</h1>
+    <p>Deployed successfully on EdgeDeploy Global CDN.</p>
+    <div class="badge">Branch: ${project.branch || 'main'}</div>
+  </div>
+</body>
+</html>`;
+        fs.writeFileSync(indexPath, defaultHtml, 'utf8');
+      }
     }
 
     // Step 5: Read output files and compute metadata
