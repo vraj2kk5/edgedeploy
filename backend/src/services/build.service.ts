@@ -222,7 +222,7 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${project.name} - EdgeDeploy CDN Live Site</title>
+  <title>${project.name} - EdgeDeploy Cloud Platform</title>
   <style>
     :root {
       --bg: #090d16;
@@ -232,6 +232,7 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
       --text: #f8fafc;
       --muted: #94a3b8;
       --brand: #0066ff;
+      --brand-hover: #0052cc;
     }
     html.light {
       --bg: #f8fafc;
@@ -241,29 +242,42 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
       --text: #0f172a;
       --muted: #64748b;
       --brand: #0284c7;
+      --brand-hover: #0369a1;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.2s, color 0.2s; line-height: 1.5; }
-    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-    .logo { display: flex; align-items: center; gap: 0.75rem; font-weight: 700; font-size: 1.25rem; color: var(--text); }
-    .status-badge { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
-    .btn { background: var(--brand); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
-    .btn:hover { opacity: 0.9; }
-    .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
-    main { max-width: 1000px; margin: 2.5rem auto; padding: 0 1.5rem; }
-    .hero { text-align: center; margin-bottom: 2.5rem; }
-    .hero h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.75rem; color: var(--text); }
-    .hero p { color: var(--muted); font-size: 1.125rem; max-width: 600px; margin: 0 auto; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-    .card-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; }
-    .card-panel h3 { font-size: 1rem; margin-bottom: 1rem; color: var(--text); }
-    .metric { font-size: 1.75rem; font-weight: 700; color: var(--brand); font-mono: true; }
-    .node-list { list-style: none; }
-    .node-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; color: var(--muted); }
-    .node-item:last-child { border-bottom: none; }
-    .node-item strong { color: var(--text); }
-    .tester { background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 2.5rem; }
-    .test-box { background: var(--card); border: 1px solid var(--border); padding: 1rem; border-radius: 0.5rem; font-family: monospace; font-size: 0.875rem; margin-top: 1rem; word-break: break-all; color: var(--text); }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.2s, color 0.2s; line-height: 1.6; }
+    
+    nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .brand-logo { font-size: 1.35rem; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+    .nav-links { display: flex; gap: 1.5rem; list-style: none; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+    .btn { background: var(--brand); color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 0.6rem; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+    .btn:hover { background: var(--brand-hover); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { background: var(--card); }
+
+    .hero { padding: 5rem 1.5rem; text-align: center; max-width: 900px; margin: 0 auto; }
+    .badge { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(0, 102, 255, 0.1); color: var(--brand); border: 1px solid rgba(0, 102, 255, 0.2); padding: 0.35rem 0.9rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1.5rem; }
+    .hero h1 { font-size: 3.25rem; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 1.25rem; line-height: 1.15; color: var(--text); }
+    .hero p { font-size: 1.25rem; color: var(--muted); margin-bottom: 2.25rem; max-width: 700px; margin-left: auto; margin-right: auto; }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+    .section { max-width: 1100px; margin: 4rem auto; padding: 0 1.5rem; }
+    .section-title { text-align: center; margin-bottom: 3rem; }
+    .section-title h2 { font-size: 2.25rem; font-weight: 800; color: var(--text); margin-bottom: 0.5rem; }
+    .section-title p { color: var(--muted); font-size: 1rem; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.75rem; }
+    .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; padding: 2rem; transition: transform 0.2s, border-color 0.2s; }
+    .feature-card:hover { transform: translateY(-4px); border-color: var(--brand); }
+    .feature-icon { width: 3rem; height: 3rem; background: rgba(0, 102, 255, 0.1); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1.25rem; }
+    .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
+    .feature-card p { color: var(--muted); font-size: 0.95rem; }
+
+    .demo-widget { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; padding: 2.5rem; text-align: center; }
+    .counter-display { font-size: 3.5rem; font-weight: 900; color: var(--brand); margin: 1rem 0; font-family: monospace; }
+    
+    footer { background: var(--surface); border-top: 1px solid var(--border); padding: 3rem 2rem; margin-top: 5rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
   </style>
   <script>
     (function() {
@@ -272,16 +286,13 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
         var u = user ? JSON.parse(user) : null;
         var key = u && u.id ? 'edgedeploy_theme_user_' + u.id : 'edgedeploy_theme';
         var theme = localStorage.getItem(key) || localStorage.getItem('edgedeploy_theme');
-        if (theme === 'light') {
-          document.documentElement.classList.add('light');
-        }
+        if (theme === 'light') { document.documentElement.classList.add('light'); }
       } catch(e) {}
     })();
 
     function toggleTheme() {
       var root = document.documentElement;
-      var current = root.classList.contains('light') ? 'light' : 'dark';
-      var next = current === 'light' ? 'dark' : 'light';
+      var next = root.classList.contains('light') ? 'dark' : 'light';
       if (next === 'light') { root.classList.add('light'); } else { root.classList.remove('light'); }
       try {
         var user = localStorage.getItem('edgedeploy_user');
@@ -292,69 +303,73 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
       } catch(e) {}
     }
 
-    async function runEdgePing() {
-      const output = document.getElementById('ping-output');
-      output.innerText = '⚡ Testing Edge Node Latency...';
-      const start = performance.now();
-      try {
-        const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-cache' });
-        const ms = Math.round(performance.now() - start);
-        const cacheStatus = res.headers.get('x-cache-status') || 'HIT';
-        const edgeNode = res.headers.get('x-edge-node') || 'edge-1 (Mumbai)';
-        output.innerText = '✅ Responded in ' + ms + 'ms | Edge Node: ' + edgeNode + ' | Cache Status: ' + cacheStatus;
-      } catch (e) {
-        output.innerText = '✅ CDN Response Latency: < 3ms (Local Edge Gateway)';
-      }
-    }
+    let count = 0;
+    function increment() { count++; document.getElementById('counter').innerText = count; }
+    function decrement() { if(count > 0) count--; document.getElementById('counter').innerText = count; }
   </script>
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <span>⚡ ${project.name}</span>
-      <span class="status-badge">● LIVE ON EDGE CDN</span>
-    </div>
-    <div style="display: flex; gap: 0.75rem; align-items: center;">
-      <button onclick="toggleTheme()" class="btn btn-secondary">🌓 Toggle Theme</button>
-      <a href="http://localhost:3000/dashboard" class="btn">Control Panel →</a>
-    </div>
-  </header>
+  <nav>
+    <a href="#" class="brand-logo">⚡ ${project.name}</a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#demo">Interactive App</a></li>
+      <li><button onclick="toggleTheme()" class="btn btn-outline">🌓 Theme</button></li>
+      <li><a href="http://localhost:3000/dashboard" class="btn">Control Panel →</a></li>
+    </ul>
+  </nav>
 
   <main>
-    <div class="hero">
-      <h1>🚀 ${project.name} is Live!</h1>
-      <p>Your static web project has been successfully compiled and distributed across EdgeDeploy's edge CDN nodes.</p>
-    </div>
-
-    <div class="grid">
-      <div class="card-panel">
-        <h3>CDN Edge Nodes</h3>
-        <ul class="node-list">
-          <li class="node-item"><span>Mumbai Edge (Port 4101)</span> <strong>Active (0ms)</strong></li>
-          <li class="node-item"><span>Ahmedabad Edge (Port 4102)</span> <strong>Active (0ms)</strong></li>
-          <li class="node-item"><span>Delhi Edge (Port 4103)</span> <strong>Active (0ms)</strong></li>
-        </ul>
+    <section class="hero">
+      <div class="badge">🚀 Global CDN Deployment Active</div>
+      <h1>Instant Deployment for Modern Static Web Apps</h1>
+      <p>EdgeDeploy automatically compiles, optimizes, and routes your static web applications across globally distributed edge CDN nodes with sub-5ms latency.</p>
+      <div class="hero-actions">
+        <button onclick="increment()" class="btn">Try Live Demo App</button>
+        <a href="http://localhost:3000/projects" class="btn btn-outline">Manage Projects</a>
       </div>
+    </section>
 
-      <div class="card-panel">
-        <h3>Deployment Specs</h3>
-        <ul class="node-list">
-          <li class="node-item"><span>Project Name</span> <strong>${project.name}</strong></li>
-          <li class="node-item"><span>Branch</span> <strong>${project.branch || 'main'}</strong></li>
-          <li class="node-item"><span>Routing Protocol</span> <strong>Token Bucket LB (:8080)</strong></li>
-        </ul>
+    <section id="features" class="section">
+      <div class="section-title">
+        <h2>Built for High Performance</h2>
+        <p>Everything you need to deliver lightning-fast static sites to users worldwide.</p>
       </div>
-    </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Edge CDN Acceleration</h3>
+          <p>Distributed edge nodes in Mumbai, Ahmedabad, and Delhi deliver assets with sub-5ms cache HIT latency.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Token Bucket Rate Limiting</h3>
+          <p>Built-in DDoS and rate limit protection with burst capacity and real-time IP throttling.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <h3>Automated Git CI/CD</h3>
+          <p>Instant webhook deployments on every Git push with automatic build logs and rollback support.</p>
+        </div>
+      </div>
+    </section>
 
-    <div class="tester">
-      <h3>⚡ Edge Latency & Cache Tester</h3>
-      <p style="font-size: 0.875rem; color: var(--muted); margin-top: 0.25rem;">Test real-time response time from the nearest distributed edge node.</p>
-      <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
-        <button onclick="runEdgePing()" class="btn">Run Edge Latency Test</button>
+    <section id="demo" class="section">
+      <div class="demo-widget">
+        <h2>Interactive Web Application Demo</h2>
+        <p style="color: var(--muted); margin-top: 0.5rem;">This interactive widget runs live directly from the EdgeDeploy CDN node.</p>
+        <div id="counter" class="counter-display">0</div>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+          <button onclick="increment()" class="btn">Count +1</button>
+          <button onclick="decrement()" class="btn btn-outline">Count -1</button>
+        </div>
       </div>
-      <div id="ping-output" class="test-box">Click "Run Edge Latency Test" to measure response time...</div>
-    </div>
+    </section>
   </main>
+
+  <footer>
+    <p>© 2026 EdgeDeploy Platform. Deployed & Served via EdgeDeploy Global CDN.</p>
+  </footer>
 </body>
 </html>`;
         fs.writeFileSync(indexPath, defaultHtml, 'utf8');
