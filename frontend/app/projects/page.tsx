@@ -3,14 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FolderGit2, Plus, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
+import { FolderGit2, Plus, CheckCircle2, Clock, ExternalLink, Trash2 } from 'lucide-react';
 
 export default function ProjectsListPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchProjects = () => {
     const token = localStorage.getItem('edgedeploy_token');
     if (!token) {
       router.push('/login');
@@ -26,7 +26,35 @@ export default function ProjectsListPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchProjects();
   }, [router]);
+
+  const handleDeleteProject = async (e: React.MouseEvent, projectId: number, projectName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete project "${projectName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    const token = localStorage.getItem('edgedeploy_token');
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      } else {
+        const data = await res.json();
+        alert(data.error?.message || 'Failed to delete project');
+      }
+    } catch (err: any) {
+      alert('Error deleting project: ' + err.message);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -82,14 +110,23 @@ export default function ProjectsListPage() {
                 <Link href={`/projects/${project.id}`} className="text-xs text-blue-400 hover:underline font-semibold">
                   Manage Project →
                 </Link>
-                <a
-                  href={`http://localhost:8080/serve/${project.id}/`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 bg-card text-xs text-gray-300 font-medium rounded-lg border border-border flex items-center gap-1"
-                >
-                  Visit Site <ExternalLink className="w-3 h-3" />
-                </a>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`http://localhost:8080/serve/${project.id}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-card text-xs text-gray-300 font-medium rounded-lg border border-border flex items-center gap-1 hover:bg-gray-700 transition"
+                  >
+                    Visit Site <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <button
+                    onClick={(e) => handleDeleteProject(e, project.id, project.name)}
+                    className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition"
+                    title="Delete Project"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

@@ -124,6 +124,28 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!window.confirm(`Are you sure you want to delete project "${project?.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    const token = localStorage.getItem('edgedeploy_token');
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        router.push('/projects');
+      } else {
+        const data = await res.json();
+        alert(data.error?.message || 'Failed to delete project');
+      }
+    } catch (err: any) {
+      alert('Error deleting project: ' + err.message);
+    }
+  };
+
   const handleInspectSite = async () => {
     setInspecting(true);
     setInspectResult(null);
@@ -205,6 +227,13 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
           >
             <Activity className="w-3.5 h-3.5" /> Analytics
           </Link>
+          <button
+            onClick={handleDeleteProject}
+            className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-xs text-red-400 border border-red-500/30 font-medium rounded-xl transition flex items-center gap-1"
+            title="Delete Project"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
         </div>
       </div>
 
