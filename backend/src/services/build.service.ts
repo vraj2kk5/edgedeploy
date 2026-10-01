@@ -362,8 +362,13 @@ function runBuildSubprocess(
     child.stderr.on('data', (data) => {
       const lines = data.toString().split('\n');
       for (const l of lines) {
-        if (l.trim()) {
-          logFn('STDERR', l.trim());
+        const trimmed = l.trim();
+        if (trimmed) {
+          if (/^(npm (warn|notice)|warning|warn)/i.test(trimmed)) {
+            logFn('STDOUT', trimmed);
+          } else {
+            logFn('STDERR', trimmed);
+          }
         }
       }
     });
