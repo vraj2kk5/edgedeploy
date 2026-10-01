@@ -14,6 +14,7 @@ import {
   Terminal,
   Activity,
   Zap,
+  GitPullRequest,
 } from 'lucide-react';
 
 export default function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
