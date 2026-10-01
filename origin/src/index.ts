@@ -59,7 +59,8 @@ app.get('/sites/:projectId/*', async (request, reply) => {
     return reply.status(400).send({ error: { code: 400, message: 'Path traversal attempt rejected' } });
   }
 
-  const activeDeploymentId = await getActiveDeploymentId(projectId);
+  const customDepId = request.headers['x-deployment-id'] ? parseInt(request.headers['x-deployment-id'] as string, 10) : null;
+  const activeDeploymentId = customDepId || await getActiveDeploymentId(projectId);
   if (!activeDeploymentId) {
     return reply.status(404).send({ error: { code: 404, message: 'No active deployment for this project' } });
   }

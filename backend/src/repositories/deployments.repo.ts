@@ -11,17 +11,32 @@ export async function listDeploymentsByProject(projectId: number): Promise<Deplo
   );
 }
 
+export async function findLatestDeploymentByPr(projectId: number, prNumber: number): Promise<Deployment | null> {
+  return queryOne<Deployment>(
+    'SELECT * FROM Deployments WHERE project_id = ? AND pr_number = ? AND status = "SUCCESS" ORDER BY created_at DESC LIMIT 1',
+    [projectId, prNumber]
+  );
+}
+
+export async function findLatestDeploymentByBranch(projectId: number, branch: string): Promise<Deployment | null> {
+  return queryOne<Deployment>(
+    'SELECT * FROM Deployments WHERE project_id = ? AND branch = ? AND status = "SUCCESS" ORDER BY created_at DESC LIMIT 1',
+    [projectId, branch]
+  );
+}
+
 export async function createDeployment(data: {
   project_id: number;
   commit_sha: string;
   commit_message: string;
   branch: string;
-  trigger: 'WEBHOOK' | 'MANUAL' | 'REDEPLOY';
+  pr_number?: number | null;
+  trigger: 'WEBHOOK' | 'MANUAL' | 'REDEPLOY' | 'PULL_REQUEST';
 }): Promise<Deployment> {
   const result = await execute(
-    `INSERT INTO Deployments (project_id, commit_sha, commit_message, branch, status, \`trigger\`)
-     VALUES (?, ?, ?, ?, 'QUEUED', ?)`,
-    [data.project_id, data.commit_sha, data.commit_message, data.branch, data.trigger]
+    `INSERT INTO Deployments (project_id, commit_sha, commit_message, branch, pr_number, status, \`trigger\`)
+     VALUES (?, ?, ?, ?, ?, 'QUEUED', ?)`,
+    [data.project_id, data.commit_sha, data.commit_message, data.branch, data.pr_number || null, data.trigger]
   );
 
   const deployment = await findDeploymentById(result.insertId);

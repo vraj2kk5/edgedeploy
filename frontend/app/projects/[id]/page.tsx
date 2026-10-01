@@ -83,6 +83,30 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const handleTriggerPrPreview = async () => {
+    setDeploying(true);
+    const token = localStorage.getItem('edgedeploy_token');
+    const randomPr = Math.floor(Math.random() * 90) + 10;
+    try {
+      const res = await fetch(`/api/projects/${id}/pr-preview`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prNumber: randomPr, branch: `feature/pr-${randomPr}` }),
+      });
+      const data = await res.json();
+      if (res.ok && data.deployment) {
+        router.push(`/projects/${id}/deployments/${data.deployment.id}`);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeploying(false);
+    }
+  };
+
   const handlePurgeCache = async () => {
     setPurging(true);
     const token = localStorage.getItem('edgedeploy_token');
@@ -159,6 +183,13 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
             className="flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brandHover text-white text-sm font-semibold rounded-xl transition shadow-lg shadow-blue-600/20 disabled:opacity-50"
           >
             <Rocket className="w-4 h-4" /> Trigger Deploy
+          </button>
+          <button
+            onClick={handleTriggerPrPreview}
+            disabled={deploying}
+            className="flex items-center gap-1.5 px-3 py-2 bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 text-xs font-semibold rounded-xl border border-purple-500/30 transition disabled:opacity-50"
+          >
+            <GitPullRequest className="w-3.5 h-3.5" /> PR Preview
           </button>
           <button
             onClick={handlePurgeCache}
@@ -277,7 +308,27 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                     </td>
                     <td className="py-3 font-mono text-gray-300">{dep.commit_sha.substring(0, 7)}</td>
                     <td className="py-3 text-gray-300 max-w-xs truncate">{dep.commit_message}</td>
-                    <td className="py-3 font-mono text-gray-400">{dep.trigger}</td>
+                    <td className="py-3 font-mono text-gray-400">
+                      {dep.trigger === 'PULL_REQUEST' ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/40 text-[10px]">
+                            PR #{dep.pr_number || 1}
+                          </span>
+                          {dep.status === 'SUCCESS' && (
+                            <a
+                              href={`http://localhost:8080/serve/${id}/pr/${dep.pr_number || 1}/`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] text-purple-400 hover:underline font-bold flex items-center gap-0.5"
+                            >
+                              Preview <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        dep.trigger
+                      )}
+                    </td>
                     <td className="py-3 text-gray-400">{new Date(dep.created_at).toLocaleString()}</td>
                     <td className="py-3 text-right">
                       <Link

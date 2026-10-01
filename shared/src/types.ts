@@ -1,6 +1,6 @@
 export type UserRole = 'DEVELOPER' | 'ADMIN';
 export type DeploymentStatus = 'QUEUED' | 'BUILDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
-export type DeploymentTrigger = 'WEBHOOK' | 'MANUAL' | 'REDEPLOY';
+export type DeploymentTrigger = 'WEBHOOK' | 'MANUAL' | 'REDEPLOY' | 'PULL_REQUEST';
 export type LogStream = 'SYSTEM' | 'STDOUT' | 'STDERR';
 export type EdgeNodeStatus = 'HEALTHY' | 'UNHEALTHY' | 'OFFLINE';
 export type CacheResult = 'HIT' | 'MISS' | 'NONE';
@@ -47,6 +47,7 @@ export interface Deployment {
   commit_sha: string;
   commit_message: string;
   branch: string;
+  pr_number?: number | null;
   status: DeploymentStatus;
   trigger: DeploymentTrigger;
   started_at: Date | null;

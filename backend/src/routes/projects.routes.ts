@@ -243,6 +243,35 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
     return reply.status(202).send({ deployment });
   });
 
+  // Trigger PR / Branch preview deployment
+  fastify.post('/api/projects/:id/pr-preview', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const projectId = parseInt(id, 10);
+    const project = await findProjectById(projectId);
+
+    if (!project || (request.user!.role !== 'ADMIN' && project.user_id !== request.user!.id)) {
+      return reply.status(404).send({ error: { code: 404, message: 'Project not found' } });
+    }
+
+    const { prNumber = 1, branch = 'feature/preview' } = (request.body as any) || {};
+    const commitSha = crypto.randomBytes(20).toString('hex');
+    const deployment = await createDeployment({
+      project_id: project.id,
+      commit_sha: commitSha,
+      commit_message: `Pull Request #${prNumber} Preview (${branch})`,
+      branch: String(branch),
+      pr_number: Number(prNumber),
+      trigger: 'PULL_REQUEST',
+    });
+
+    deploymentQueue.enqueue(deployment.id);
+
+    return reply.status(202).send({
+      deployment,
+      previewUrl: `http://localhost:8080/serve/${project.id}/pr/${prNumber}/`,
+    });
+  });
+
   // List deployments for project
   fastify.get('/api/projects/:id/deployments', async (request, reply) => {
     const { id } = request.params as { id: string };

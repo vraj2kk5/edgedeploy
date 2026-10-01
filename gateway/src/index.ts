@@ -300,6 +300,19 @@ app.route({
       return reply.status(503).send({ error: { code: 503, message: 'Service Unavailable: No healthy edge nodes available' } });
     }
 
+    let customDepHeader: Record<string, string> = {};
+    
+    // Check if targetPath has /pr/:prNumber/
+    const prMatch = targetPath.match(/^\/pr\/(\d+)(.*)$/);
+    if (prMatch && projectId) {
+      const prNumber = parseInt(prMatch[1], 10);
+      targetPath = prMatch[2] || '/';
+      const prDep = await queryOne<{ id: number }>('SELECT id FROM Deployments WHERE project_id = ? AND pr_number = ? AND status = "SUCCESS" ORDER BY created_at DESC LIMIT 1', [projectId, prNumber]);
+      if (prDep) {
+        customDepHeader['x-deployment-id'] = String(prDep.id);
+      }
+    }
+
     const cleanPath = targetPath === '' || targetPath === '/' ? 'index.html' : targetPath.replace(/^\//, '');
     let edgeUrl = `http://localhost:${edgeNode.port}/serve/${projectId}/${cleanPath}`;
 
@@ -308,6 +321,7 @@ app.route({
         method: request.method,
         headers: {
           'if-none-match': request.headers['if-none-match'] || '',
+          ...customDepHeader,
         },
       });
 

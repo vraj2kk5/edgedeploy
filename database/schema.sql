@@ -50,13 +50,15 @@ CREATE TABLE IF NOT EXISTS Deployments (
   commit_sha VARCHAR(40) NOT NULL,
   commit_message TEXT NOT NULL,
   branch VARCHAR(255) NOT NULL DEFAULT 'main',
+  pr_number INT NULL,
   status ENUM('QUEUED', 'BUILDING', 'SUCCESS', 'FAILED', 'CANCELLED') NOT NULL DEFAULT 'QUEUED',
-  `trigger` ENUM('WEBHOOK', 'MANUAL', 'REDEPLOY') NOT NULL DEFAULT 'MANUAL',
+  `trigger` ENUM('WEBHOOK', 'MANUAL', 'REDEPLOY', 'PULL_REQUEST') NOT NULL DEFAULT 'MANUAL',
   started_at TIMESTAMP NULL,
   finished_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_deployments_project FOREIGN KEY (project_id) REFERENCES Projects(id) ON DELETE CASCADE,
-  INDEX idx_deployments_project_created (project_id, created_at)
+  INDEX idx_deployments_project_created (project_id, created_at),
+  INDEX idx_deployments_pr (project_id, pr_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- FK for Projects.active_deployment_id

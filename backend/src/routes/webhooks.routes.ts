@@ -13,7 +13,7 @@ export async function webhookRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.status(200).send({ message: 'pong' });
     }
 
-    if (event !== 'push') {
+    if (event !== 'push' && event !== 'pull_request') {
       return reply.status(200).send({ message: `Ignored event: ${event}` });
     }
 
@@ -57,6 +57,39 @@ export async function webhookRoutes(fastify: FastifyInstance): Promise<void> {
     const ownerUser = await findUserById(project.user_id);
     if (ownerUser?.is_blocked) {
       return reply.status(403).send({ error: { code: 403, message: 'Project owner account is blocked' } });
+    }
+
+    // Handle Pull Request Event
+    if (event === 'pull_request') {
+      const pr = payload.pull_request;
+      const action = payload.action;
+
+      if (!pr || (action !== 'opened' && action !== 'synchronize' && action !== 'reopened')) {
+        return reply.status(200).send({ message: `Ignored PR action: ${action}` });
+      }
+
+      const prNumber = pr.number;
+      const branch = pr.head?.ref || 'main';
+      const commitSha = pr.head?.sha || crypto.randomBytes(20).toString('hex');
+      const commitMessage = `PR #${prNumber}: ${pr.title || 'Pull Request Preview'}`;
+
+      const deployment = await createDeployment({
+        project_id: project.id,
+        commit_sha: commitSha,
+        commit_message: commitMessage,
+        branch,
+        pr_number: prNumber,
+        trigger: 'PULL_REQUEST',
+      });
+
+      deploymentQueue.enqueue(deployment.id);
+
+      return reply.status(202).send({
+        message: `PR #${prNumber} preview deployment queued`,
+        deploymentId: deployment.id,
+        prNumber,
+        previewUrl: `http://localhost:8080/serve/${project.id}/pr/${prNumber}/`,
+      });
     }
 
     // Check branch match (ref e.g. "refs/heads/main")

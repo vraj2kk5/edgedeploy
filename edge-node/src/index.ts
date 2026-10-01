@@ -171,8 +171,9 @@ app.get('/serve/:projectId/*', async (request, reply) => {
   const projectId = parseInt(projIdStr, 10);
   const wildcardPath = (request.params as any)['*'] || '';
 
+  const customDepId = request.headers['x-deployment-id'] ? parseInt(request.headers['x-deployment-id'] as string, 10) : null;
   const relPath = wildcardPath === '' || wildcardPath === '/' ? 'index.html' : wildcardPath;
-  const cacheKey = `${projectId}:${relPath}`;
+  const cacheKey = customDepId ? `${projectId}:dep-${customDepId}:${relPath}` : `${projectId}:${relPath}`;
 
   const now = Date.now();
   const cachedItem = memoryCache.get(cacheKey);
@@ -227,6 +228,7 @@ app.get('/serve/:projectId/*', async (request, reply) => {
     const originRes = await fetch(originUrl, {
       headers: {
         'x-internal-token': config.security.internalApiToken,
+        ...(customDepId ? { 'x-deployment-id': String(customDepId) } : {}),
       },
     });
 
