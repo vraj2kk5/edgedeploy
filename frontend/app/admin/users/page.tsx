@@ -1,20 +1,45 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { UserCheck, ShieldAlert, Lock, Unlock } from 'lucide-react';
 
 export default function AdminUsersPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('edgedeploy_user');
+    if (userStr) {
+      try {
+        setCurrentUser(JSON.parse(userStr));
+      } catch (e) {}
+    }
+  }, []);
+
+  const handleUnauthorized = () => {
+    localStorage.removeItem('edgedeploy_token');
+    localStorage.removeItem('edgedeploy_user');
+    router.push('/login');
+  };
 
   const fetchUsers = async () => {
     const token = localStorage.getItem('edgedeploy_token');
-    if (!token) return;
+    if (!token) {
+      router.push('/login');
+      return;
+    }
 
     try {
       const res = await fetch('/api/admin/users', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        handleUnauthorized();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users || []);
@@ -32,12 +57,21 @@ export default function AdminUsersPage() {
 
   const handleToggleBlock = async (userId: number, currentBlocked: boolean) => {
     const token = localStorage.getItem('edgedeploy_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
     const endpoint = `/api/admin/users/${userId}/${currentBlocked ? 'unblock' : 'block'}`;
     try {
       const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        handleUnauthorized();
+        return;
+      }
       if (res.ok) {
         fetchUsers();
       } else {
@@ -100,8 +134,11 @@ export default function AdminUsersPage() {
                   <td className="p-4 text-right">
                     <button
                       onClick={() => handleToggleBlock(u.id, u.is_blocked)}
+                      disabled={Boolean(currentUser && (currentUser.id === u.id || currentUser.email === u.email))}
                       className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 ml-auto transition ${
-                        u.is_blocked
+                        currentUser && (currentUser.id === u.id || currentUser.email === u.email)
+                          ? 'opacity-40 cursor-not-allowed bg-gray-600/20 text-gray-400 border border-gray-500/30'
+                          : u.is_blocked
                           ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-500/30'
                           : 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30'
                       }`}
