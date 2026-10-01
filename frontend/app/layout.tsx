@@ -14,6 +14,8 @@ import {
   LogOut,
   UserCheck,
   Zap,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,16 +23,46 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [isAuthPage, setIsAuthPage] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  const getThemeKey = (u?: any) => (u?.id ? `edgedeploy_theme_user_${u.id}` : 'edgedeploy_theme');
 
   useEffect(() => {
     setIsAuthPage(pathname === '/login' || pathname === '/signup');
     const storedUser = localStorage.getItem('edgedeploy_user');
+    let currentUser: any = null;
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        currentUser = JSON.parse(storedUser);
+        setUser(currentUser);
       } catch (e) {}
     }
+
+    const key = getThemeKey(currentUser);
+    const savedTheme = (localStorage.getItem(key) || localStorage.getItem('edgedeploy_theme') || 'dark') as 'dark' | 'light';
+    setTheme(savedTheme);
+    applyThemeClass(savedTheme);
   }, [pathname]);
+
+  const applyThemeClass = (targetTheme: 'dark' | 'light') => {
+    const root = document.documentElement;
+    if (targetTheme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    }
+  };
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    applyThemeClass(nextTheme);
+    const key = getThemeKey(user);
+    localStorage.setItem(key, nextTheme);
+    localStorage.setItem('edgedeploy_theme', nextTheme);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('edgedeploy_token');
@@ -41,7 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   if (isAuthPage) {
     return (
-      <html lang="en">
+      <html lang="en" className={theme}>
         <body className="bg-background text-gray-100 antialiased min-h-screen">
           {children}
         </body>
@@ -62,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   ];
 
   return (
-    <html lang="en">
+    <html lang="en" className={theme}>
       <body className="bg-background text-gray-100 antialiased min-h-screen flex flex-col">
         {/* Top Navbar */}
         <header className="h-16 border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-50 flex items-center justify-between px-6">
@@ -75,9 +107,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* User Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="px-3 py-1.5 rounded-xl border border-border bg-card/60 text-gray-300 hover:text-white hover:bg-card transition flex items-center gap-2 text-xs font-medium"
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400" />
+                  <span className="hidden sm:inline">Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-blue-500" />
+                  <span className="hidden sm:inline">Dark Mode</span>
+                </>
+              )}
+            </button>
+
             {user ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <div className="text-right text-xs">
                   <div className="font-semibold text-gray-200">{user.email}</div>
                   <div className="text-gray-400 uppercase tracking-wider font-mono text-[10px]">{user.role}</div>
