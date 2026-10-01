@@ -6,13 +6,13 @@ async function runDemo() {
   console.log('----------------------------------------------------');
 
   // Purge cache first for clean start
-  await fetch(`http://localhost:${config.ports.backend}/api/admin/cache/purge`, {
+  await fetch(`http://127.0.0.1:${config.ports.backend}/api/admin/cache/purge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ scope: 'all' }),
   }).catch(() => {});
 
-  const gatewayUrl = `http://localhost:${config.ports.gateway}/serve/1/index.html`;
+  const gatewayUrl = `http://127.0.0.1:${config.ports.gateway}/serve/1/index.html`;
 
   // First Request: Expected MISS
   const start1 = Date.now();

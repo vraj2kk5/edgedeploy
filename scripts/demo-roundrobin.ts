@@ -6,7 +6,7 @@ async function runDemo() {
   console.log('Sending 6 consecutive visitor requests to Gateway (:8080)...');
   console.log('----------------------------------------------------');
 
-  const gatewayUrl = `http://localhost:${config.ports.gateway}/serve/1/index.html`;
+  const gatewayUrl = `http://127.0.0.1:${config.ports.gateway}/serve/1/index.html`;
 
   for (let i = 1; i <= 6; i++) {
     try {

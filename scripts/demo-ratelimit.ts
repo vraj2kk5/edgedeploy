@@ -6,7 +6,7 @@ async function runDemo() {
   console.log('Flooding Gateway (:8080) with rapid requests...');
   console.log('----------------------------------------------------');
 
-  const gatewayUrl = `http://localhost:${config.ports.gateway}/serve/1/index.html`;
+  const gatewayUrl = `http://127.0.0.1:${config.ports.gateway}/serve/1/index.html`;
 
   let blockedCount = 0;
   let allowedCount = 0;

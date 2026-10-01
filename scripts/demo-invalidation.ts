@@ -5,7 +5,7 @@ async function runDemo() {
   console.log('🔄 DEMO: DEPLOYMENT CACHE INVALIDATION PIPELINE');
   console.log('----------------------------------------------------');
 
-  const gatewayUrl = `http://localhost:${config.ports.gateway}/serve/1/index.html`;
+  const gatewayUrl = `http://127.0.0.1:${config.ports.gateway}/serve/1/index.html`;
 
   console.log('1. Fetching active site version...');
   const res1 = await fetch(gatewayUrl);
@@ -14,7 +14,7 @@ async function runDemo() {
   console.log('\n2. Triggering cache purge signal...');
   for (const port of config.ports.edgePorts) {
     try {
-      await fetch(`http://localhost:${port}/internal/purge`, {
+      await fetch(`http://127.0.0.1:${port}/internal/purge`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

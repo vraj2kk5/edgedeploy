@@ -33,7 +33,7 @@ async function runDemo() {
   const secret = repo.webhook_secret || 'secret_seed_456';
   const signature = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
 
-  const webhookUrl = `http://localhost:${config.ports.backend}/api/webhooks/github`;
+  const webhookUrl = `http://127.0.0.1:${config.ports.backend}/api/webhooks/github`;
 
   console.log(`Sending signed push payload to ${webhookUrl}...`);
   console.log(`Signature: ${signature}`);

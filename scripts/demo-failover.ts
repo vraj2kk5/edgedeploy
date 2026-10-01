@@ -5,7 +5,7 @@ async function runDemo() {
   console.log('🛡️ DEMO: EDGE NODE HEALTH FAILURE & FAILOVER');
   console.log('----------------------------------------------------');
 
-  const gatewayUrl = `http://localhost:${config.ports.gateway}/serve/1/index.html`;
+  const gatewayUrl = `http://127.0.0.1:${config.ports.gateway}/serve/1/index.html`;
 
   console.log('1. Normal Traffic before failure:');
   for (let i = 1; i <= 3; i++) {
