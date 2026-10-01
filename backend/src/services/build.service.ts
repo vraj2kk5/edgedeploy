@@ -290,6 +290,19 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
       } catch(e) {}
     })();
 
+    function updateThemeButtonUI() {
+      var isLight = document.documentElement.classList.contains('light');
+      var btn = document.getElementById('theme-btn');
+      if (!btn) return;
+      if (isLight) {
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg> <span>Dark Mode</span>';
+        btn.title = 'Switch to Dark mode';
+      } else {
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> <span>Light Mode</span>';
+        btn.title = 'Switch to Light mode';
+      }
+    }
+
     function toggleTheme() {
       var root = document.documentElement;
       var next = root.classList.contains('light') ? 'dark' : 'light';
@@ -301,7 +314,10 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
         localStorage.setItem(key, next);
         localStorage.setItem('edgedeploy_theme', next);
       } catch(e) {}
+      updateThemeButtonUI();
     }
+
+    document.addEventListener('DOMContentLoaded', updateThemeButtonUI);
 
     let count = 0;
     function increment() { count++; document.getElementById('counter').innerText = count; }
@@ -314,7 +330,12 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
     <ul class="nav-links">
       <li><a href="#features">Features</a></li>
       <li><a href="#demo">Interactive App</a></li>
-      <li><button onclick="toggleTheme()" class="btn btn-outline">🌓 Theme</button></li>
+      <li>
+        <button id="theme-btn" onclick="toggleTheme()" class="btn btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          <span>Light Mode</span>
+        </button>
+      </li>
       <li><a href="http://localhost:3000/dashboard" class="btn">Control Panel →</a></li>
     </ul>
   </nav>
