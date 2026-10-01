@@ -27,6 +27,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const getThemeKey = (u?: any) => (u?.id ? `edgedeploy_theme_user_${u.id}` : 'edgedeploy_theme');
 
+  const applyThemeClass = (targetTheme: 'dark' | 'light') => {
+    const root = document.documentElement;
+    if (targetTheme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    }
+  };
+
   useEffect(() => {
     setIsAuthPage(pathname === '/login' || pathname === '/signup');
     const storedUser = localStorage.getItem('edgedeploy_user');
@@ -44,16 +55,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     applyThemeClass(savedTheme);
   }, [pathname]);
 
-  const applyThemeClass = (targetTheme: 'dark' | 'light') => {
-    const root = document.documentElement;
-    if (targetTheme === 'light') {
-      root.classList.add('light');
-      root.classList.remove('dark');
-    } else {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    }
-  };
+  // Sync theme in real time across browser tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key && e.key.includes('edgedeploy_theme')) {
+        const newTheme = (e.newValue || 'dark') as 'dark' | 'light';
+        setTheme(newTheme);
+        applyThemeClass(newTheme);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
@@ -71,9 +84,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     router.push('/login');
   };
 
+  const inlineThemeScript = `
+    (function() {
+      try {
+        var storedUser = localStorage.getItem('edgedeploy_user');
+        var u = storedUser ? JSON.parse(storedUser) : null;
+        var key = u && u.id ? 'edgedeploy_theme_user_' + u.id : 'edgedeploy_theme';
+        var theme = localStorage.getItem(key) || localStorage.getItem('edgedeploy_theme') || 'dark';
+        if (theme === 'light') {
+          document.documentElement.classList.add('light');
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('light');
+        }
+      } catch(e) {}
+    })();
+  `;
+
   if (isAuthPage) {
     return (
-      <html lang="en" className={theme}>
+      <html lang="en" suppressHydrationWarning className={theme}>
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: inlineThemeScript }} />
+        </head>
         <body className="bg-background text-gray-100 antialiased min-h-screen">
           {children}
         </body>
@@ -94,7 +128,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   ];
 
   return (
-    <html lang="en" className={theme}>
+    <html lang="en" suppressHydrationWarning className={theme}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: inlineThemeScript }} />
+      </head>
       <body className="bg-background text-gray-100 antialiased min-h-screen flex flex-col">
         {/* Top Navbar */}
         <header className="h-16 border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-50 flex items-center justify-between px-6">

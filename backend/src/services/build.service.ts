@@ -219,12 +219,39 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${project.name} - EdgeDeploy</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .card { background: #1e293b; padding: 2.5rem 3rem; border-radius: 1rem; border: 1px solid #334155; text-align: center; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
-    h1 { color: #38bdf8; margin-bottom: 0.5rem; }
-    p { color: #94a3b8; line-height: 1.6; }
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --border: #374151;
+      --title: #38bdf8;
+      --text: #94a3b8;
+    }
+    html.light {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #cbd5e1;
+      --title: #0284c7;
+      --text: #475569;
+    }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; transition: background 0.2s, color 0.2s; }
+    .card { background: var(--card-bg); padding: 2.5rem 3rem; border-radius: 1rem; border: 1px solid var(--border); text-align: center; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    h1 { color: var(--title); margin-bottom: 0.5rem; }
+    p { color: var(--text); line-height: 1.6; }
     .badge { display: inline-block; background: #0284c7; color: #fff; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; margin-top: 1rem; }
   </style>
+  <script>
+    (function() {
+      try {
+        var user = localStorage.getItem('edgedeploy_user');
+        var u = user ? JSON.parse(user) : null;
+        var key = u && u.id ? 'edgedeploy_theme_user_' + u.id : 'edgedeploy_theme';
+        var theme = localStorage.getItem(key) || localStorage.getItem('edgedeploy_theme');
+        if (theme === 'light') {
+          document.documentElement.classList.add('light');
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
   <div class="card">
