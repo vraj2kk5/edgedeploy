@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EdgeDeploy Sample Test Application</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#3b82f6', 600: '#2563eb' }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 min-h-screen font-sans flex flex-col justify-between">
+
+  <!-- Header & Navigation -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 px-6 py-4">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/20">
+          ⚡
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">EdgeDeploy Test App</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Live CI/CD Edge Verified</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <!-- Live Status Badge -->
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-2"></span>
+          Deployed & Active
+        </span>
+
+        <!-- Theme Toggle Button -->
+        <button id="themeToggle" onclick="toggleTheme()" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition font-medium text-xs shadow-sm">
+          <svg id="themeIconSun" class="w-4 h-4 text-amber-500 hidden" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z"/>
+          </svg>
+          <svg id="themeIconMoon" class="w-4 h-4 text-blue-500 hidden" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+          </svg>
+          <span id="themeLabel">Light Mode</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-6 py-10 flex-grow w-full space-y-10">
+
+    <!-- Hero Banner -->
+    <section class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-8 md:p-12 text-white shadow-xl relative overflow-hidden">
+      <div class="relative z-10 space-y-4 max-w-2xl">
+        <span class="inline-block px-3 py-1 rounded-md bg-white/20 backdrop-blur-sm text-xs font-semibold tracking-wide uppercase">
+          CI/CD Sample Application
+        </span>
+        <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
+          Congratulations! Your Project is Live on the Edge 🚀
+        </h2>
+        <p class="text-blue-100 text-sm md:text-base leading-relaxed">
+          This sample project proves your EdgeDeploy environment is actively capturing GitHub pushes, executing isolated builds, and synchronizing global edge node caches.
+        </p>
+      </div>
+      <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl"></div>
+    </section>
+
+    <!-- Interactive 3-in-1 Test Widget Suite -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <!-- Widget 1: Interactive Counter & State Test -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-lg">State & Counter Test</h3>
+            <span class="text-xs text-blue-500 font-mono">Component #1</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">
+            Test DOM reactivity and client state management.
+          </p>
+          <div class="text-center py-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl mb-6">
+            <span id="counterVal" class="text-5xl font-black text-blue-600 dark:text-blue-400">0</span>
+          </div>
+        </div>
+
+        <div class="flex space-x-3">
+          <button onclick="changeCounter(-1)" class="flex-1 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+            -
+          </button>
+          <button onclick="changeCounter(1)" class="flex-1 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition shadow-md shadow-blue-500/20">
+            +
+          </button>
+        </div>
+      </div>
+
+      <!-- Widget 2: Edge Node Latency Benchmarker -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-lg">Edge Latency Ping</h3>
+            <span class="text-xs text-emerald-500 font-mono">Component #2</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+            Measure response times from localized edge microservices.
+          </p>
+
+          <div class="space-y-3 mb-6">
+            <div class="flex justify-between items-center text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span class="font-medium">Edge Node #1 (US-East)</span>
+              <span id="node1Ping" class="font-mono font-bold text-emerald-500">Checking...</span>
+            </div>
+            <div class="flex justify-between items-center text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span class="font-medium">Edge Node #2 (EU-Central)</span>
+              <span id="node2Ping" class="font-mono font-bold text-emerald-500">Checking...</span>
+            </div>
+            <div class="flex justify-between items-center text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span class="font-medium">Edge Node #3 (AP-South)</span>
+              <span id="node3Ping" class="font-mono font-bold text-emerald-500">Checking...</span>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="runLatencyCheck()" class="w-full py-2.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs hover:opacity-90 transition">
+          🔄 Benchmark Edge Latency
+        </button>
+      </div>
+
+      <!-- Widget 3: Live Deployment Info & Webhook Status -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-lg">Pipeline Metadata</h3>
+            <span class="text-xs text-purple-500 font-mono">Component #3</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+            Details captured during the automatic build process.
+          </p>
+
+          <div class="space-y-2.5 text-xs">
+            <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span class="text-slate-500">Trigger Event:</span>
+              <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">GitHub Push Webhook</span>
+            </div>
+            <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span class="text-slate-500">Build Target:</span>
+              <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">npm run build</span>
+            </div>
+            <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span class="text-slate-500">Output Folder:</span>
+              <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">/dist</span>
+            </div>
+            <div class="flex justify-between pb-1">
+              <span class="text-slate-500">Cache Invalidation:</span>
+              <span class="font-semibold text-emerald-500">Purged Across All Edges</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-xs text-purple-600 dark:text-purple-400">
+          ✨ Ready to test push & deploy!
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-6 px-6 text-center text-xs text-slate-500 dark:text-slate-400">
+    Powered by <strong class="text-blue-600 dark:text-blue-400">EdgeDeploy CI/CD Pipeline</strong> • Global Edge CDN Proxy Server
+  </footer>
+
+  <script>
+    // Theme Switcher Logic
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIconSun').classList.remove('hidden');
+        document.getElementById('themeIconMoon').classList.add('hidden');
+        document.getElementById('themeLabel').textContent = 'Dark Mode';
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('themeIconSun').classList.add('hidden');
+        document.getElementById('themeIconMoon').classList.remove('hidden');
+        document.getElementById('themeLabel').textContent = 'Light Mode';
+      }
+      localStorage.setItem('theme', theme);
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      applyTheme(isDark ? 'light' : 'dark');
+    }
+
+    const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(savedTheme);
+
+    // Counter State
+    let count = 0;
+    function changeCounter(delta) {
+      count += delta;
+      document.getElementById('counterVal').textContent = count;
+    }
+
+    // Latency Ping
+    function runLatencyCheck() {
+      const node1 = document.getElementById('node1Ping');
+      const node2 = document.getElementById('node2Ping');
+      const node3 = document.getElementById('node3Ping');
+
+      [node1, node2, node3].forEach(el => {
+        el.textContent = 'Pinging...';
+        el.className = 'font-mono font-bold text-amber-500 animate-pulse';
+      });
+
+      setTimeout(() => {
+        node1.textContent = (Math.random() * 12 + 4).toFixed(1) + ' ms';
+        node1.className = 'font-mono font-bold text-emerald-500';
+
+        node2.textContent = (Math.random() * 18 + 8).toFixed(1) + ' ms';
+        node2.className = 'font-mono font-bold text-emerald-500';
+
+        node3.textContent = (Math.random() * 25 + 14).toFixed(1) + ' ms';
+        node3.className = 'font-mono font-bold text-emerald-500';
+      }, 400);
+    }
+
+    runLatencyCheck();
+  </script>
+</body>
+</html>

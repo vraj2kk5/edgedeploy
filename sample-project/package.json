@@ -1,0 +1,9 @@
+{
+  "name": "edge-sample-app",
+  "version": "1.0.0",
+  "description": "Sample test project for EdgeDeploy CI/CD pipeline",
+  "main": "build.js",
+  "scripts": {
+    "build": "node build.js"
+  }
+}
