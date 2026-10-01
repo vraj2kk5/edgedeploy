@@ -134,8 +134,13 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
       }
     } else {
       // Fallback fixture copy for demo site
-      const fixturePath = path.resolve(process.cwd(), 'fixtures', 'sample-static-site');
-      if (fs.existsSync(fixturePath)) {
+      const fixtureCandidates = [
+        path.resolve(__dirname, '..', '..', '..', 'fixtures', 'sample-static-site'),
+        path.resolve(process.cwd(), 'fixtures', 'sample-static-site'),
+        path.resolve(process.cwd(), '..', 'fixtures', 'sample-static-site'),
+      ];
+      const fixturePath = fixtureCandidates.find((p) => fs.existsSync(p));
+      if (fixturePath) {
         fs.cpSync(fixturePath, buildDir, { recursive: true });
         await log('SYSTEM', `Using local fixture site repository at ${fixturePath}`);
       } else {
