@@ -16,7 +16,7 @@ export function getPool(): mysql.Pool {
       connectionLimit: config.db.connectionLimit,
       queueLimit: 0,
       multipleStatements: true,
-      timezone: 'Z',
+      timezone: 'local',
       connectTimeout: 15000,
     });
     logger.info(`[DB Pool] Initialized MySQL pool for ${config.db.user}@${config.db.host}:${config.db.port}/${config.db.database}`);
