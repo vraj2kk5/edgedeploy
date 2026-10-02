@@ -18,6 +18,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,30 +92,39 @@ export default function SignupPage() {
               type="password"
               required
               value={password}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm transition"
               placeholder="••••••••"
             />
             
-            {/* Live Password Requirements Indicator */}
-            <div className="mt-3 p-3 bg-card/60 border border-border/80 rounded-xl space-y-1.5 text-xs">
-              <div className="font-semibold text-gray-300 text-[11px] uppercase tracking-wider mb-1">Password Requirements:</div>
-              <div className={`flex items-center gap-1.5 ${password.length >= 8 ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
-                <span>{password.length >= 8 ? '✓' : '○'}</span> At least 8 characters
+            {/* Sleek single-line requirement hint on focus/typing */}
+            {(isFocused || password.length > 0) && (
+              <div className="mt-1.5 text-[11px] transition-all duration-200">
+                {(() => {
+                  const missing = [];
+                  if (password.length < 8) missing.push('8+ chars');
+                  if (!/[A-Z]/.test(password)) missing.push('uppercase A-Z');
+                  if (!/[a-z]/.test(password)) missing.push('lowercase a-z');
+                  if (!/[0-9]/.test(password)) missing.push('number 0-9');
+                  if (!/[^A-Za-z0-9]/.test(password)) missing.push('special char (!@#$)');
+
+                  if (missing.length === 0) {
+                    return (
+                      <span className="text-emerald-400 font-medium flex items-center gap-1">
+                        ✓ Strong password - meets all requirements
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="text-gray-400">
+                      <span className="text-amber-400 font-medium">Required:</span> {missing.join(', ')}
+                    </span>
+                  );
+                })()}
               </div>
-              <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(password) ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
-                <span>{/[A-Z]/.test(password) ? '✓' : '○'}</span> One uppercase letter (A-Z)
-              </div>
-              <div className={`flex items-center gap-1.5 ${/[a-z]/.test(password) ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
-                <span>{/[a-z]/.test(password) ? '✓' : '○'}</span> One lowercase letter (a-z)
-              </div>
-              <div className={`flex items-center gap-1.5 ${/[0-9]/.test(password) ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
-                <span>{/[0-9]/.test(password) ? '✓' : '○'}</span> One number (0-9)
-              </div>
-              <div className={`flex items-center gap-1.5 ${/[^A-Za-z0-9]/.test(password) ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
-                <span>{/[^A-Za-z0-9]/.test(password) ? '✓' : '○'}</span> One special character (!@#$%...)
-              </div>
-            </div>
+            )}
           </div>
 
           <button
