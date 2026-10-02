@@ -33,3 +33,25 @@ export async function setUserBlockedStatus(userId: number, isBlocked: boolean): 
   );
   return result.affectedRows > 0;
 }
+
+export async function setResetToken(userId: number, token: string, expiresAt: Date): Promise<void> {
+  await execute(
+    'UPDATE Users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
+    [token, expiresAt, userId]
+  );
+}
+
+export async function findUserByResetToken(token: string): Promise<User | null> {
+  return queryOne<User>(
+    'SELECT * FROM Users WHERE reset_token = ? AND reset_token_expires > NOW()',
+    [token]
+  );
+}
+
+export async function updateUserPassword(userId: number, passwordHash: string): Promise<void> {
+  await execute(
+    'UPDATE Users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
+    [passwordHash, userId]
+  );
+}
+

@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config, JWTPayload } from '@edgedeploy/shared';
-import { createUser, findUserByEmail } from '../repositories/users.repo.js';
+import crypto from 'crypto';
+import { createUser, findUserByEmail, setResetToken, findUserByResetToken, updateUserPassword } from '../repositories/users.repo.js';
 import { authenticate } from '../middleware/auth.js';
 
 const signupSchema = z.object({
@@ -120,4 +121,66 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       },
     });
   });
+
+  // Forgot Password - Generate reset token
+  fastify.post('/api/auth/forgot-password', async (request, reply) => {
+    const schema = z.object({ email: z.string().email() });
+    const parseResult = schema.safeParse(request.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({ error: { code: 400, message: 'Invalid email address' } });
+    }
+
+    const { email } = parseResult.data;
+    const user = await findUserByEmail(email);
+
+    // Always respond with success to prevent user enumeration
+    if (!user) {
+      return reply.send({
+        message: 'If an account exists with that email, a password reset link has been generated.',
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hour expiration
+
+    await setResetToken(user.id, resetToken, expiresAt);
+
+    return reply.send({
+      message: 'Password reset link generated successfully.',
+      resetToken,
+      resetLink: `http://localhost:3000/reset-password?token=${resetToken}`,
+    });
+  });
+
+  // Reset Password - Verify token and update password
+  fastify.post('/api/auth/reset-password', async (request, reply) => {
+    const schema = z.object({
+      token: z.string().min(1, 'Reset token is required'),
+      newPassword: z.string().min(8, 'Password must be at least 8 characters long'),
+    });
+
+    const parseResult = schema.safeParse(request.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({
+        error: { code: 400, message: 'Validation failed', details: parseResult.error.format() },
+      });
+    }
+
+    const { token, newPassword } = parseResult.data;
+    const user = await findUserByResetToken(token);
+
+    if (!user) {
+      return reply.status(400).send({
+        error: { code: 400, message: 'Invalid or expired password reset token' },
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await updateUserPassword(user.id, passwordHash);
+
+    return reply.send({
+      message: 'Password has been successfully updated. You can now log in.',
+    });
+  });
 }
+

@@ -11,6 +11,38 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [resetLink, setResetLink] = useState('');
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotMsg('');
+    setResetLink('');
+    setForgotLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error?.message || 'Failed to process forgot password request');
+      }
+      setForgotMsg(data.message);
+      if (data.resetLink) {
+        setResetLink(data.resetLink);
+      }
+    } catch (err: any) {
+      setForgotMsg(err.message || 'An error occurred');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +121,16 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">Password</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-gray-300">Password</label>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="text-xs text-blue-400 hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
             <input
               type="password"
               required
@@ -134,6 +175,70 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-6 shadow-2xl relative">
+            <h2 className="text-xl font-bold text-white mb-2">Reset Password</h2>
+            <p className="text-xs text-gray-400 mb-4">
+              Enter your account email address and we will generate a password reset link for you.
+            </p>
+
+            {forgotMsg && (
+              <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-300 text-xs space-y-2">
+                <div>{forgotMsg}</div>
+                {resetLink && (
+                  <div className="pt-2 border-t border-blue-500/20">
+                    <span className="font-semibold text-white">Reset Link: </span>
+                    <a
+                      href={resetLink}
+                      className="text-cyan-400 underline break-all font-mono"
+                    >
+                      {resetLink}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <form onSubmit={handleForgotSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm transition"
+                  placeholder="yourname@example.com"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(false);
+                    setForgotMsg('');
+                    setResetLink('');
+                  }}
+                  className="px-4 py-2 bg-card hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold border border-border transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="px-4 py-2 bg-brand hover:bg-brandHover text-white rounded-xl text-xs font-semibold transition disabled:opacity-50"
+                >
+                  {forgotLoading ? 'Processing...' : 'Send Reset Link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
