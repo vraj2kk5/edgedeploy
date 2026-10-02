@@ -9,20 +9,10 @@ export default function SignupPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('edgedeploy_token');
-    if (token) {
+    const tabToken = sessionStorage.getItem('edgedeploy_token');
+    if (tabToken) {
       router.push('/dashboard');
     }
-
-    const handleStorageChange = () => {
-      const updatedToken = localStorage.getItem('edgedeploy_token');
-      if (updatedToken) {
-        router.push('/dashboard');
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
   }, [router]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,8 +44,8 @@ export default function SignupPage() {
         throw new Error(data.error?.message || 'Signup failed');
       }
 
-      localStorage.setItem('edgedeploy_token', data.token);
-      localStorage.setItem('edgedeploy_user', JSON.stringify(data.user));
+      sessionStorage.setItem('edgedeploy_token', data.token);
+      sessionStorage.setItem('edgedeploy_user', JSON.stringify(data.user));
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Signup failed');

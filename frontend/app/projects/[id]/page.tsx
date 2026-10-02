@@ -32,7 +32,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   const [inspecting, setInspecting] = useState(false);
 
   const fetchProjectData = async () => {
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     if (!token) return;
 
     try {
@@ -67,7 +67,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
 
   const handleTriggerDeploy = async (type: 'deploy' | 'redeploy') => {
     setDeploying(true);
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     try {
       const res = await fetch(`/api/projects/${id}/${type}`, {
         method: 'POST',
@@ -86,7 +86,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
 
   const handleTriggerPrPreview = async () => {
     setDeploying(true);
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     const randomPr = Math.floor(Math.random() * 90) + 10;
     try {
       const res = await fetch(`/api/projects/${id}/pr-preview`, {
@@ -110,7 +110,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
 
   const handlePurgeCache = async () => {
     setPurging(true);
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     try {
       await fetch(`/api/projects/${id}/purge-cache`, {
         method: 'POST',
@@ -129,7 +129,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
       return;
     }
 
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     try {
       const res = await fetch(`/api/projects/${id}`, {
         method: 'DELETE',

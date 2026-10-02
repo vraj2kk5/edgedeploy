@@ -11,7 +11,7 @@ export default function AdminUsersPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('edgedeploy_user');
+    const userStr = sessionStorage.getItem('edgedeploy_user') || localStorage.getItem('edgedeploy_user');
     if (userStr) {
       try {
         setCurrentUser(JSON.parse(userStr));
@@ -26,7 +26,7 @@ export default function AdminUsersPage() {
   };
 
   const fetchUsers = async () => {
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     if (!token) {
       router.push('/login');
       return;
@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
   }, []);
 
   const handleToggleBlock = async (userId: number, currentBlocked: boolean) => {
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     if (!token) {
       router.push('/login');
       return;

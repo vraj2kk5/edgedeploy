@@ -11,7 +11,7 @@ export default function ProjectsListPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchProjects = () => {
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     if (!token) {
       router.push('/login');
       return;
@@ -39,7 +39,7 @@ export default function ProjectsListPage() {
       return;
     }
 
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     try {
       const res = await fetch(`/api/projects/${projectId}`, {
         method: 'DELETE',

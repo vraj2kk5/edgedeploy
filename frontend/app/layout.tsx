@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     setIsAuthPage(pathname === '/login' || pathname === '/signup');
-    const storedUser = localStorage.getItem('edgedeploy_user');
+    const storedUser = sessionStorage.getItem('edgedeploy_user') || localStorage.getItem('edgedeploy_user');
     let currentUser: any = null;
     if (storedUser) {
       try {
@@ -78,6 +78,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem('edgedeploy_token');
+    sessionStorage.removeItem('edgedeploy_user');
     localStorage.removeItem('edgedeploy_token');
     localStorage.removeItem('edgedeploy_user');
     setUser(null);

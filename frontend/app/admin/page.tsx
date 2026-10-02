@@ -9,7 +9,7 @@ export default function AdminOverviewPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchOverview = async () => {
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     if (!token) return;
 
     try {

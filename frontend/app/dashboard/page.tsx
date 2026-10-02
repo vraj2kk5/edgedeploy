@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
 
   const fetchProjects = async () => {
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     if (!token) {
       router.push('/login');
       return;
