@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
 import simpleGit from 'simple-git';
-import { config, logger } from '@edgedeploy/shared';
+import { config, logger, execute } from '@edgedeploy/shared';
 import { findProjectById } from '../repositories/projects.repo.js';
 import { findRepositoryByProjectId } from '../repositories/repositories.repo.js';
 import {
@@ -131,6 +131,16 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
         } catch (bErr) {
           await log('SYSTEM', `Using repository default branch HEAD`);
         }
+      }
+
+      try {
+        const realHeadSha = (await buildGit.revparse(['HEAD'])).trim();
+        if (realHeadSha && realHeadSha !== deployment.commit_sha) {
+          await execute('UPDATE Deployments SET commit_sha = ? WHERE id = ?', [realHeadSha, deploymentId]);
+          deployment.commit_sha = realHeadSha;
+        }
+      } catch (revErr) {
+        // ignore non-git repos
       }
     } else {
       // Fallback fixture copy for demo site

@@ -468,9 +468,13 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {gitCommits.map((c) => {
+                  {gitCommits.map((c, index) => {
+                    const latestMainDep = deployments.find((d) => (d.branch === (project?.branch || 'main') || !d.pr_number) && d.status === 'SUCCESS');
                     const existingDep = deployments.find(
-                      (d) => d.commit_sha === c.sha || d.commit_sha?.startsWith(c.shortSha) || c.sha?.startsWith(d.commit_sha?.substring(0, 7))
+                      (d) =>
+                        d.commit_sha === c.sha ||
+                        (d.commit_sha && c.sha && (d.commit_sha.startsWith(c.shortSha) || c.sha.startsWith(d.commit_sha.substring(0, 7)))) ||
+                        (index === 0 && d.id === latestMainDep?.id)
                     );
                     const isDeployed = existingDep && existingDep.status === 'SUCCESS';
                     const isBuilding = existingDep && (existingDep.status === 'BUILDING' || existingDep.status === 'QUEUED');

@@ -359,7 +359,15 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
       [projectId, prNumber]
     );
 
-    const mergedSha = commitSha || crypto.randomBytes(20).toString('hex');
+    const repo = await findRepositoryByProjectId(project.id);
+    let mergedSha = commitSha;
+    if (!mergedSha && repo && repo.repo_url) {
+      const commits = await fetchCommitsFromGitHub(repo.repo_url, project.branch || 'main');
+      if (commits.length > 0) {
+        mergedSha = commits[0].sha;
+      }
+    }
+    if (!mergedSha) mergedSha = crypto.randomBytes(20).toString('hex');
     const mergeMessage = commitMessage || `Merge Pull Request #${prNumber} into ${project.branch || 'main'} (Production Deploy)`;
 
     // Create new Production deployment on project's main branch
