@@ -228,7 +228,7 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
     }
   }
 
-  // Get project commits from GitHub repository
+  // Get project commits from GitHub repository + active PR/feature branch deployments
   fastify.get('/api/projects/:id/commits', async (request, reply) => {
     const { id } = request.params as { id: string };
     const projectId = parseInt(id, 10);
@@ -239,11 +239,36 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     const repo = await findRepositoryByProjectId(project.id);
-    if (!repo || !repo.repo_url) {
-      return reply.send({ commits: [] });
+    let commits: any[] = [];
+    if (repo && repo.repo_url) {
+      commits = await fetchCommitsFromGitHub(repo.repo_url, project.branch || 'main');
     }
 
-    const commits = await fetchCommitsFromGitHub(repo.repo_url, project.branch || 'main');
+    // Include PR Preview & feature branch deployments that are not on main yet
+    const prDeployments = await query<any>(
+      `SELECT * FROM Deployments WHERE project_id = ? AND (pr_number IS NOT NULL OR branch != ?) ORDER BY created_at DESC LIMIT 10`,
+      [projectId, project.branch || 'main']
+    );
+
+    const existingShas = new Set(commits.map((c) => c.sha));
+    for (const dep of prDeployments) {
+      if (!existingShas.has(dep.commit_sha)) {
+        commits.unshift({
+          sha: dep.commit_sha,
+          shortSha: dep.commit_sha.substring(0, 7),
+          message: dep.commit_message,
+          author: 'PR / Feature Branch',
+          date: dep.created_at,
+          branch: dep.branch,
+          pr_number: dep.pr_number,
+          isPrBranch: true,
+          url: repo?.repo_url?.startsWith('https://github.com')
+            ? `${repo.repo_url}/commit/${dep.commit_sha}`
+            : '#',
+        });
+      }
+    }
+
     return reply.send({ commits });
   });
 

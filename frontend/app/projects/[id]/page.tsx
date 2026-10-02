@@ -487,11 +487,44 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                             {c.shortSha} <ExternalLink className="w-3 h-3 text-gray-500" />
                           </a>
                         </td>
-                        <td className="py-3 text-white font-medium max-w-md truncate">{c.message}</td>
+                        <td className="py-3 text-white font-medium max-w-md truncate">
+                          <div className="flex items-center gap-2">
+                            {c.pr_number && (
+                              <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/40 text-[10px] shrink-0">
+                                PR #{c.pr_number}
+                              </span>
+                            )}
+                            <span className="truncate">{c.message}</span>
+                          </div>
+                        </td>
                         <td className="py-3 text-gray-400">{c.author}</td>
                         <td className="py-3 text-gray-400">{new Date(c.date).toLocaleString()}</td>
                         <td className="py-3 text-right">
-                          {isDeployed ? (
+                          {c.pr_number ? (
+                            c.message?.startsWith('[MERGED]') ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/20 text-green-300 border border-green-500/30 rounded-lg text-xs font-semibold">
+                                <GitMerge className="w-3.5 h-3.5 text-green-400" /> Merged to Main
+                              </span>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <a
+                                  href={`http://localhost:8080/serve/${id}/pr/${c.pr_number}/`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-lg text-xs font-semibold flex items-center gap-1"
+                                >
+                                  Preview <ExternalLink className="w-3 h-3" />
+                                </a>
+                                <button
+                                  onClick={() => handleMergePr(c.pr_number, c.sha)}
+                                  disabled={deploying}
+                                  className="px-2.5 py-1 bg-green-600/30 hover:bg-green-600 text-green-300 hover:text-white border border-green-500/30 rounded-lg text-xs font-semibold flex items-center gap-1 transition disabled:opacity-50"
+                                >
+                                  <GitMerge className="w-3 h-3" /> Merge 🔀
+                                </button>
+                              </div>
+                            )
+                          ) : isDeployed ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-xs font-semibold">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Deployed
                             </span>
