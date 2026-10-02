@@ -184,6 +184,9 @@ export async function processDeploymentBuild(deploymentId: number): Promise<void
     // Auto-detect output directory if specified one lacks index.html
     const candidates = [
       project.output_directory,
+      'sample-project/dist',
+      'sample-project/public',
+      'sample-project',
       '.',
       'dist',
       'public',

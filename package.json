@@ -21,7 +21,7 @@
     "edge:3": "cross-env NODE_ID=edge-3 PORT=4103 REGION=Delhi npm run dev --workspace=edge-node",
     "edges": "concurrently -k -p \"[{name}]\" -c \"blue,green,magenta\" \"npm run edge:1\" \"npm run edge:2\" \"npm run edge:3\"",
     "frontend": "npm run dev --workspace=frontend",
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspaces && node sample-project/build.js",
     "db:migrate": "tsx database/migrate.ts",
     "db:seed": "tsx database/seed.ts",
     "test": "vitest run",
