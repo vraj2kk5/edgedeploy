@@ -168,4 +168,60 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
     return reply.send({ message: `IP ${ip} has been unblocked successfully` });
   });
+
+  // Admin Request Logs Inspector
+  fastify.get('/api/admin/request-logs', async (request, reply) => {
+    const { status, cache, search } = request.query as { status?: string; cache?: string; search?: string };
+    
+    let whereConditions: string[] = [];
+    let params: any[] = [];
+
+    if (status && status !== 'ALL') {
+      whereConditions.push('r.status_code = ?');
+      params.push(parseInt(status, 10));
+    }
+    if (cache && cache !== 'ALL') {
+      whereConditions.push('r.cache_result = ?');
+      params.push(cache);
+    }
+    if (search && search.trim() !== '') {
+      whereConditions.push('(r.client_ip LIKE ? OR r.path LIKE ? OR r.domain LIKE ?)');
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term);
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const logs = await query(`
+      SELECT 
+        r.id, r.ts, r.client_ip, r.project_id, r.domain, r.path, r.method,
+        r.status_code, r.latency_ms, r.edge_node_id, r.cache_result, r.bytes,
+        p.name as project_name,
+        e.name as edge_name, e.region as edge_region
+      FROM RequestLogs r
+      LEFT JOIN Projects p ON r.project_id = p.id
+      LEFT JOIN EdgeNodes e ON r.edge_node_id = e.id
+      ${whereClause}
+      ORDER BY r.ts DESC LIMIT 100
+    `, params);
+
+    const stats = await queryOne<{ total: number; success_count: number; rate_limited: number; avg_latency: number }>(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status_code >= 200 AND status_code < 300 THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN status_code = 429 THEN 1 ELSE 0 END) as rate_limited,
+        AVG(latency_ms) as avg_latency
+      FROM RequestLogs
+    `);
+
+    return reply.send({
+      logs,
+      stats: {
+        total: Number(stats?.total || 0),
+        success: Number(stats?.success_count || 0),
+        rateLimited: Number(stats?.rate_limited || 0),
+        avgLatencyMs: Math.round(Number(stats?.avg_latency || 0)),
+      }
+    });
+  });
 }

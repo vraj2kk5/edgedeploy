@@ -16,6 +16,7 @@ import {
   Zap,
   Sun,
   Moon,
+  Radio,
 } from 'lucide-react';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -127,6 +128,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { name: 'Edge Nodes', href: '/admin/edges', icon: Server },
     { name: 'Users', href: '/admin/users', icon: UserCheck },
     { name: 'Rate Limits', href: '/admin/rate-limits', icon: Activity },
+    { name: 'Request Logs', href: '/admin/request-logs', icon: Radio },
   ];
 
   return (
