@@ -16,18 +16,37 @@ interface TokenBucket {
 
 const rateLimitBuckets = new Map<string, TokenBucket>();
 
-// Pre-load blocked IPs from DB
+// Synchronize blocked IPs with DB continuously
 async function syncRateLimitsWithDB() {
-  const rows = await query<any>('SELECT client_ip, is_blocked, block_reason FROM RateLimits WHERE is_blocked = TRUE');
-  for (const r of rows) {
-    rateLimitBuckets.set(r.client_ip, {
-      tokens: 0,
-      lastRefill: Date.now(),
-      isBlocked: true,
-      blockReason: r.block_reason || 'Blocked by Admin',
-    });
-  }
+  try {
+    const rows = await query<any>('SELECT client_ip, is_blocked, block_reason FROM RateLimits');
+    const dbBlockedSet = new Set<string>();
+
+    for (const r of rows) {
+      const ip = r.client_ip;
+      if (r.is_blocked) {
+        dbBlockedSet.add(ip);
+        rateLimitBuckets.set(ip, {
+          tokens: 0,
+          lastRefill: Date.now(),
+          isBlocked: true,
+          blockReason: r.block_reason || 'Blocked by Admin',
+        });
+      }
+    }
+
+    // Unblock any IPs in memory that are no longer blocked in DB
+    for (const [ip, bucket] of rateLimitBuckets.entries()) {
+      if (bucket.isBlocked && !dbBlockedSet.has(ip)) {
+        bucket.isBlocked = false;
+        bucket.tokens = config.rateLimit.capacity;
+      }
+    }
+  } catch (err) {}
 }
+
+// Sync rate limits with DB every 2 seconds
+setInterval(syncRateLimitsWithDB, 2000);
 
 function checkRateLimit(clientIp: string): { allowed: boolean; retryAfterSeconds: number; isBlocked: boolean; reason?: string } {
   const now = Date.now();
@@ -201,7 +220,9 @@ app.route({
   url: '*',
   handler: async (request, reply) => {
     const startTime = Date.now();
-    const clientIp = (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || request.ip || '127.0.0.1';
+    const rawIp = (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || request.ip || '127.0.0.1';
+    let clientIp = rawIp.replace(/^::ffff:/, '');
+    if (clientIp === '::1') clientIp = '127.0.0.1';
 
     // Step 1: TOKEN BUCKET RATE LIMITER (Runs First)
     const rlResult = checkRateLimit(clientIp);
