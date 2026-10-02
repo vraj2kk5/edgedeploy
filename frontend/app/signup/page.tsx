@@ -83,12 +83,31 @@ export default function SignupPage() {
             <input
               type="password"
               required
-              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm transition"
-              placeholder="At least 8 characters"
+              placeholder="••••••••"
             />
+            
+            {/* Live Password Requirements Indicator */}
+            <div className="mt-3 p-3 bg-card/60 border border-border/80 rounded-xl space-y-1.5 text-xs">
+              <div className="font-semibold text-gray-300 text-[11px] uppercase tracking-wider mb-1">Password Requirements:</div>
+              <div className={`flex items-center gap-1.5 ${password.length >= 8 ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
+                <span>{password.length >= 8 ? '✓' : '○'}</span> At least 8 characters
+              </div>
+              <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(password) ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
+                <span>{/[A-Z]/.test(password) ? '✓' : '○'}</span> One uppercase letter (A-Z)
+              </div>
+              <div className={`flex items-center gap-1.5 ${/[a-z]/.test(password) ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
+                <span>{/[a-z]/.test(password) ? '✓' : '○'}</span> One lowercase letter (a-z)
+              </div>
+              <div className={`flex items-center gap-1.5 ${/[0-9]/.test(password) ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
+                <span>{/[0-9]/.test(password) ? '✓' : '○'}</span> One number (0-9)
+              </div>
+              <div className={`flex items-center gap-1.5 ${/[^A-Za-z0-9]/.test(password) ? 'text-emerald-400 font-medium' : 'text-gray-400'}`}>
+                <span>{/[^A-Za-z0-9]/.test(password) ? '✓' : '○'}</span> One special character (!@#$%...)
+              </div>
+            </div>
           </div>
 
           <button

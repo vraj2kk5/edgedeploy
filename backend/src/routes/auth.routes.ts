@@ -7,9 +7,16 @@ import crypto from 'crypto';
 import { createUser, findUserByEmail, setResetToken, findUserByResetToken, updateUserPassword } from '../repositories/users.repo.js';
 import { authenticate } from '../middleware/auth.js';
 
+const passwordValidation = z.string()
+  .min(8, 'Password must be at least 8 characters long')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+
 const signupSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
+  password: passwordValidation,
 });
 
 const loginSchema = z.object({
@@ -156,7 +163,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post('/api/auth/reset-password', async (request, reply) => {
     const schema = z.object({
       token: z.string().min(1, 'Reset token is required'),
-      newPassword: z.string().min(8, 'Password must be at least 8 characters long'),
+      newPassword: passwordValidation,
     });
 
     const parseResult = schema.safeParse(request.body);
