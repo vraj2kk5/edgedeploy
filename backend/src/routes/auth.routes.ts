@@ -6,6 +6,7 @@ import { config, JWTPayload } from '@edgedeploy/shared';
 import crypto from 'crypto';
 import { createUser, findUserByEmail, setResetToken, findUserByResetToken, updateUserPassword } from '../repositories/users.repo.js';
 import { authenticate } from '../middleware/auth.js';
+import { sendPasswordResetEmail } from '../services/email.service.js';
 
 const passwordValidation = z.string()
   .min(8, 'Password must be at least 8 characters long')
@@ -152,10 +153,18 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
 
     await setResetToken(user.id, resetToken, expiresAt);
 
-    return reply.send({
-      message: 'Password reset link generated successfully.',
+    const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+    const emailPreviewUrl = await sendPasswordResetEmail({
+      toEmail: user.email,
+      resetLink,
       resetToken,
-      resetLink: `http://localhost:3000/reset-password?token=${resetToken}`,
+    });
+
+    return reply.send({
+      message: `Password reset email sent to ${user.email}.`,
+      resetToken,
+      resetLink,
+      emailPreviewUrl,
     });
   });
 
