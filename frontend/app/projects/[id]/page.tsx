@@ -424,27 +424,46 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {gitCommits.map((c) => (
-                    <tr key={c.sha} className="hover:bg-card/50 transition">
-                      <td className="py-3 font-mono font-bold text-cyan-400">
-                        <a href={c.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
-                          {c.shortSha} <ExternalLink className="w-3 h-3 text-gray-500" />
-                        </a>
-                      </td>
-                      <td className="py-3 text-white font-medium max-w-md truncate">{c.message}</td>
-                      <td className="py-3 text-gray-400">{c.author}</td>
-                      <td className="py-3 text-gray-400">{new Date(c.date).toLocaleString()}</td>
-                      <td className="py-3 text-right">
-                        <button
-                          onClick={() => handleTriggerDeploy('deploy', c.sha, c.message)}
-                          disabled={deploying}
-                          className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                        >
-                          Deploy This Commit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {gitCommits.map((c) => {
+                    const existingDep = deployments.find(
+                      (d) => d.commit_sha === c.sha || d.commit_sha?.startsWith(c.shortSha) || c.sha?.startsWith(d.commit_sha?.substring(0, 7))
+                    );
+                    const isDeployed = existingDep && existingDep.status === 'SUCCESS';
+                    const isBuilding = existingDep && (existingDep.status === 'BUILDING' || existingDep.status === 'QUEUED');
+                    const isFailed = existingDep && existingDep.status === 'FAILED';
+
+                    return (
+                      <tr key={c.sha} className="hover:bg-card/50 transition">
+                        <td className="py-3 font-mono font-bold text-cyan-400">
+                          <a href={c.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+                            {c.shortSha} <ExternalLink className="w-3 h-3 text-gray-500" />
+                          </a>
+                        </td>
+                        <td className="py-3 text-white font-medium max-w-md truncate">{c.message}</td>
+                        <td className="py-3 text-gray-400">{c.author}</td>
+                        <td className="py-3 text-gray-400">{new Date(c.date).toLocaleString()}</td>
+                        <td className="py-3 text-right">
+                          {isDeployed ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-xs font-semibold">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Deployed
+                            </span>
+                          ) : isBuilding ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-semibold animate-pulse">
+                              <Clock className="w-3.5 h-3.5" /> Building...
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleTriggerDeploy('deploy', c.sha, c.message)}
+                              disabled={deploying}
+                              className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                            >
+                              {isFailed ? 'Redeploy Commit' : 'Deploy This Commit'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
