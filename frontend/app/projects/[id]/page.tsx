@@ -31,6 +31,10 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   const [gitCommits, setGitCommits] = useState<any[]>([]);
   const [loadingCommits, setLoadingCommits] = useState(false);
 
+  // Try It Inspector State
+  const [inspectResult, setInspectResult] = useState<any>(null);
+  const [inspecting, setInspecting] = useState(false);
+
   const fetchProjectData = async () => {
     const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     if (!token) return;
