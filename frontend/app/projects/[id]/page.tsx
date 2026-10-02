@@ -394,14 +394,20 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                                 >
                                   Preview <ExternalLink className="w-2.5 h-2.5" />
                                 </a>
-                                <button
-                                  onClick={() => handleMergePr(dep.pr_number || 1, dep.commit_sha)}
-                                  disabled={deploying}
-                                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-green-600/30 hover:bg-green-600 text-green-300 hover:text-white border border-green-500/30 flex items-center gap-1 transition disabled:opacity-50"
-                                  title="Merge PR into Main & Deploy to Production"
-                                >
-                                  <GitMerge className="w-2.5 h-2.5" /> Merge to Main 🔀
-                                </button>
+                                {dep.commit_message?.startsWith('[MERGED]') ? (
+                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-green-500/20 text-green-300 border border-green-500/30 flex items-center gap-1">
+                                    <GitMerge className="w-2.5 h-2.5 text-green-400" /> Merged
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleMergePr(dep.pr_number || 1, dep.commit_sha)}
+                                    disabled={deploying}
+                                    className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-green-600/30 hover:bg-green-600 text-green-300 hover:text-white border border-green-500/30 flex items-center gap-1 transition disabled:opacity-50"
+                                    title="Merge PR into Main & Deploy to Production"
+                                  >
+                                    <GitMerge className="w-2.5 h-2.5" /> Merge to Main 🔀
+                                  </button>
+                                )}
                               </>
                             )}
                           </div>

@@ -353,8 +353,14 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
 
     const { prNumber = 1, commitSha, commitMessage } = (request.body as any) || {};
 
+    // Mark all existing PR preview deployments for this PR as [MERGED]
+    await query(
+      `UPDATE Deployments SET commit_message = CONCAT('[MERGED] ', commit_message) WHERE project_id = ? AND pr_number = ? AND commit_message NOT LIKE '[MERGED]%'`,
+      [projectId, prNumber]
+    );
+
     const mergedSha = commitSha || crypto.randomBytes(20).toString('hex');
-    const mergeMessage = commitMessage || `Merge Pull Request #${prNumber} into ${project.branch || 'main'}`;
+    const mergeMessage = commitMessage || `Merge Pull Request #${prNumber} into ${project.branch || 'main'} (Production Deploy)`;
 
     // Create new Production deployment on project's main branch
     const deployment = await createDeployment({

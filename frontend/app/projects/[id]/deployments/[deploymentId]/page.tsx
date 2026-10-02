@@ -94,6 +94,9 @@ export default function DeploymentTerminalPage({
     );
   }
 
+  const isMerged = deployment?.commit_message?.startsWith('[MERGED]');
+  const isMergeProductionDeploy = deployment?.commit_message?.includes('Merge Pull Request');
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
@@ -106,7 +109,9 @@ export default function DeploymentTerminalPage({
           </Link>
           <div>
             <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              Deployment #{deploymentId} Terminal
+              {isMergeProductionDeploy
+                ? `Production Deployment #${deploymentId} (Merged PR)`
+                : `Deployment #${deploymentId} Terminal`}
             </h1>
             <p className="text-xs text-gray-400 font-mono">
               Commit: {deployment?.commit_sha} ({deployment?.branch})
@@ -127,13 +132,19 @@ export default function DeploymentTerminalPage({
                   >
                     <ExternalLink className="w-3.5 h-3.5" /> Visit PR #{deployment.pr_number} Preview ↗
                   </a>
-                  <button
-                    onClick={handleMergePr}
-                    disabled={merging}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-green-600 hover:bg-green-500 text-white flex items-center gap-1.5 transition shadow-lg shadow-green-600/20 disabled:opacity-50"
-                  >
-                    <GitMerge className="w-3.5 h-3.5" /> {merging ? 'Merging...' : 'Merge PR to Main 🔀'}
-                  </button>
+                  {isMerged ? (
+                    <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/40 flex items-center gap-1.5">
+                      <GitMerge className="w-3.5 h-3.5 text-green-400" /> ✓ Merged into Main
+                    </span>
+                  ) : (
+                    <button
+                      onClick={handleMergePr}
+                      disabled={merging}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-green-600 hover:bg-green-500 text-white flex items-center gap-1.5 transition shadow-lg shadow-green-600/20 disabled:opacity-50"
+                    >
+                      <GitMerge className="w-3.5 h-3.5" /> {merging ? 'Merging...' : 'Merge PR to Main 🔀'}
+                    </button>
+                  )}
                 </>
               ) : (
                 <a
@@ -171,7 +182,21 @@ export default function DeploymentTerminalPage({
         </div>
       </div>
 
-      {deployment?.status === 'SUCCESS' && (
+      {isMergeProductionDeploy && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 flex items-center gap-3">
+          <div className="p-2.5 bg-blue-500/20 text-blue-400 rounded-xl">
+            <GitMerge className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">🔀 Deploying Merged PR to Production</h3>
+            <p className="text-xs text-gray-300">
+              The pull request changes have been merged into <span className="font-mono text-cyan-400">{deployment.branch}</span> and are being published to your live production site (<a href={`http://localhost:8080/serve/${id}/`} target="_blank" rel="noreferrer" className="text-blue-400 underline font-mono">http://localhost:8080/serve/{id}/</a>).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {deployment?.status === 'SUCCESS' && !isMergeProductionDeploy && (
         <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-500/20 text-green-400 rounded-xl">
@@ -179,7 +204,11 @@ export default function DeploymentTerminalPage({
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">
-                {deployment.pr_number ? `PR Preview #${deployment.pr_number} Ready!` : 'Deployment Successfully Live!'}
+                {isMerged
+                  ? `✓ PR Preview #${deployment.pr_number} Merged into Main!`
+                  : deployment.pr_number
+                  ? `PR Preview #${deployment.pr_number} Ready!`
+                  : 'Deployment Successfully Live!'}
               </h3>
               <p className="text-xs text-gray-400">
                 URL:{' '}
@@ -214,13 +243,19 @@ export default function DeploymentTerminalPage({
               <ExternalLink className="w-4 h-4" /> Open Site
             </a>
             {deployment.pr_number && (
-              <button
-                onClick={handleMergePr}
-                disabled={merging}
-                className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-green-600/20 disabled:opacity-50"
-              >
-                <GitMerge className="w-4 h-4" /> {merging ? 'Merging...' : 'Merge to Main 🔀'}
-              </button>
+              isMerged ? (
+                <span className="px-4 py-2 bg-green-600/20 text-green-300 font-semibold text-xs rounded-xl flex items-center gap-1.5 border border-green-500/30">
+                  <GitMerge className="w-4 h-4 text-green-400" /> ✓ Merged into Main
+                </span>
+              ) : (
+                <button
+                  onClick={handleMergePr}
+                  disabled={merging}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-green-600/20 disabled:opacity-50"
+                >
+                  <GitMerge className="w-4 h-4" /> {merging ? 'Merging...' : 'Merge to Main 🔀'}
+                </button>
+              )
             )}
           </div>
         </div>
