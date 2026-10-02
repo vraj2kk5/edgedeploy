@@ -102,6 +102,31 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     return reply.send({ health: healthResults });
   });
 
+  // Admin WAF Security & Threat Inspector
+  fastify.get('/api/admin/waf-logs', async (request, reply) => {
+    const totalBlocked = await queryOne<{ count: number }>('SELECT COUNT(*) as count FROM WafLogs');
+
+    const threatsByType = await query<{ threat_type: string; count: number }>(
+      'SELECT threat_type, COUNT(*) as count FROM WafLogs GROUP BY threat_type ORDER BY count DESC'
+    );
+
+    const logs = await query<any>(
+      `SELECT w.*, p.name as project_name, p.slug as project_slug
+       FROM WafLogs w
+       LEFT JOIN Projects p ON w.project_id = p.id
+       ORDER BY w.created_at DESC LIMIT 50`
+    );
+
+    return reply.send({
+      summary: {
+        wafStatus: 'ACTIVE 🛡️',
+        totalBlocked: Number(totalBlocked?.count || 0),
+        threatsByType,
+        recentThreats: logs,
+      },
+    });
+  });
+
   // Global Admin Purge Cache
   fastify.post('/api/admin/cache/purge', async (request, reply) => {
     const { scope = 'all', projectId } = (request.body as any) || {};

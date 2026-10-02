@@ -17,6 +17,7 @@ import {
   Sun,
   Moon,
   Radio,
+  Shield,
 } from 'lucide-react';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -127,6 +128,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { name: 'Admin Overview', href: '/admin', icon: ShieldAlert },
     { name: 'Edge Nodes', href: '/admin/edges', icon: Server },
     { name: 'Users', href: '/admin/users', icon: UserCheck },
+    { name: 'WAF Security 🛡️', href: '/admin/waf', icon: Shield },
     { name: 'Rate Limits', href: '/admin/rate-limits', icon: Activity },
     { name: 'Request Logs', href: '/admin/request-logs', icon: Radio },
   ];
