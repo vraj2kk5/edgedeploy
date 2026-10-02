@@ -34,6 +34,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   // Try It Inspector State
   const [inspectResult, setInspectResult] = useState<any>(null);
   const [inspecting, setInspecting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'deployments' | 'commits' | 'inspector'>('deployments');
 
   const fetchProjectData = async () => {
     const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
@@ -256,61 +257,142 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* Try It CDN Header Inspector Panel */}
-      <div className="bg-surface border border-border p-6 rounded-2xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Zap className="w-5 h-5 text-amber-400" /> Live CDN Inspector (&quot;Try It&quot;)
-          </h2>
-          <button
-            onClick={handleInspectSite}
-            disabled={inspecting}
-            className="px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-xs font-semibold rounded-lg border border-blue-500/30 transition flex items-center gap-1"
-          >
-            {inspecting ? 'Probing...' : 'Fetch via Gateway (:8080)'}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400">
-          Probes Gateway load balancer to inspect live response headers (<span className="text-blue-400 font-mono">X-Cache: HIT/MISS</span>, <span className="text-blue-400 font-mono">X-Edge-Node</span>).
-        </p>
+      {/* Sub-Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-border pb-3">
+        <button
+          onClick={() => setActiveTab('deployments')}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+            activeTab === 'deployments'
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+              : 'bg-card text-gray-400 hover:text-white border border-border hover:bg-surface'
+          }`}
+        >
+          <Clock className="w-4 h-4" /> Deployment History ({deployments.length})
+        </button>
 
-        {inspectResult && (
-          <div className="bg-card p-4 rounded-xl border border-border space-y-2 font-mono text-xs">
-            {inspectResult.error ? (
-              <div className="text-red-400">Error: {inspectResult.error}</div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-gray-300">
-                <div>
-                  <div className="text-gray-500 text-[10px] uppercase">Status</div>
-                  <div className="font-bold text-green-400">{inspectResult.status} OK</div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-[10px] uppercase">X-Cache Status</div>
-                  <div className={`font-bold ${inspectResult.cacheStatus === 'HIT' ? 'text-green-400' : 'text-amber-400'}`}>
-                    {inspectResult.cacheStatus}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-[10px] uppercase">Served By Edge</div>
-                  <div className="font-bold text-cyan-400">{inspectResult.edgeNode}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-[10px] uppercase">Response Latency</div>
-                  <div className="font-bold text-white">{inspectResult.latencyMs} ms</div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        <button
+          onClick={() => setActiveTab('commits')}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+            activeTab === 'commits'
+              ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
+              : 'bg-card text-gray-400 hover:text-white border border-border hover:bg-surface'
+          }`}
+        >
+          <GitBranch className="w-4 h-4" /> Git Commits ({gitCommits.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('inspector')}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+            activeTab === 'inspector'
+              ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20'
+              : 'bg-card text-gray-400 hover:text-white border border-border hover:bg-surface'
+          }`}
+        >
+          <Zap className="w-4 h-4" /> Live CDN Inspector
+        </button>
       </div>
 
-      {/* Recent Git Commits from Repository */}
-      {gitCommits.length > 0 && (
+      {/* TAB 1: Deployment History */}
+      {activeTab === 'deployments' && (
+        <div className="bg-surface border border-border p-6 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-400" /> Deployment History ({deployments.length})
+            </h2>
+            <button onClick={fetchProjectData} className="p-1.5 text-gray-400 hover:text-white">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+
+          {deployments.length === 0 ? (
+            <div className="text-center p-8 text-sm text-gray-400">No deployments yet for this project.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-border text-gray-400 uppercase text-[10px]">
+                  <tr>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3">Commit SHA</th>
+                    <th className="pb-3">Commit Message</th>
+                    <th className="pb-3">Trigger</th>
+                    <th className="pb-3">Created At</th>
+                    <th className="pb-3 text-right">Logs</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {deployments.map((dep) => (
+                    <tr key={dep.id} className="hover:bg-card/50 transition">
+                      <td className="py-3">
+                        {dep.status === 'SUCCESS' && (
+                          <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-semibold border border-green-500/30">
+                            SUCCESS
+                          </span>
+                        )}
+                        {dep.status === 'BUILDING' && (
+                          <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-semibold border border-blue-500/30 animate-pulse">
+                            BUILDING...
+                          </span>
+                        )}
+                        {dep.status === 'QUEUED' && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-semibold border border-amber-500/30">
+                            QUEUED
+                          </span>
+                        )}
+                        {dep.status === 'FAILED' && (
+                          <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 font-semibold border border-red-500/30">
+                            FAILED
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 font-mono text-cyan-400 font-bold">{dep.commit_sha?.substring(0, 7) || 'N/A'}</td>
+                      <td className="py-3 text-white font-medium max-w-xs truncate">{dep.commit_message || 'No commit message'}</td>
+                      <td className="py-3 font-mono text-gray-400">
+                        {dep.trigger === 'PULL_REQUEST' ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/40 text-[10px]">
+                              PR #{dep.pr_number || 1}
+                            </span>
+                            {dep.status === 'SUCCESS' && (
+                              <a
+                                href={`http://localhost:8080/serve/${id}/pr/${dep.pr_number || 1}/`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-purple-400 hover:underline font-bold flex items-center gap-0.5"
+                              >
+                                Preview <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          dep.trigger
+                        )}
+                      </td>
+                      <td className="py-3 text-gray-400">{new Date(dep.created_at).toLocaleString()}</td>
+                      <td className="py-3 text-right">
+                        <Link
+                          href={`/projects/${id}/deployments/${dep.id}`}
+                          className="text-blue-400 hover:underline font-mono text-xs font-semibold flex items-center justify-end gap-1"
+                        >
+                          <Terminal className="w-3.5 h-3.5" /> View Terminal
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: Recent Git Commits */}
+      {activeTab === 'commits' && (
         <div className="bg-surface border border-border p-6 rounded-2xl space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <GitBranch className="w-5 h-5 text-purple-400" /> Recent Git Commits ({gitCommits.length})
+                <GitBranch className="w-5 h-5 text-purple-400" /> Git Commits Stream ({gitCommits.length})
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">Live commits fetched from linked GitHub repository ({project?.branch || 'main'})</p>
             </div>
@@ -324,135 +406,98 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border text-gray-400 uppercase text-[10px]">
-                <tr>
-                  <th className="pb-3">SHA</th>
-                  <th className="pb-3">Commit Message</th>
-                  <th className="pb-3">Author</th>
-                  <th className="pb-3">Date</th>
-                  <th className="pb-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {gitCommits.map((c) => (
-                  <tr key={c.sha} className="hover:bg-card/50 transition">
-                    <td className="py-3 font-mono font-bold text-cyan-400">
-                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
-                        {c.shortSha} <ExternalLink className="w-3 h-3 text-gray-500" />
-                      </a>
-                    </td>
-                    <td className="py-3 text-white font-medium max-w-md truncate">{c.message}</td>
-                    <td className="py-3 text-gray-400">{c.author}</td>
-                    <td className="py-3 text-gray-400">{new Date(c.date).toLocaleString()}</td>
-                    <td className="py-3 text-right">
-                      <button
-                        onClick={() => handleTriggerDeploy('deploy', c.sha, c.message)}
-                        disabled={deploying}
-                        className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                      >
-                        Deploy This Commit
-                      </button>
-                    </td>
+          {gitCommits.length === 0 ? (
+            <div className="text-center p-8 text-sm text-gray-400">No git commits found for this repository.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-border text-gray-400 uppercase text-[10px]">
+                  <tr>
+                    <th className="pb-3">SHA</th>
+                    <th className="pb-3">Commit Message</th>
+                    <th className="pb-3">Author</th>
+                    <th className="pb-3">Date</th>
+                    <th className="pb-3 text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {gitCommits.map((c) => (
+                    <tr key={c.sha} className="hover:bg-card/50 transition">
+                      <td className="py-3 font-mono font-bold text-cyan-400">
+                        <a href={c.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+                          {c.shortSha} <ExternalLink className="w-3 h-3 text-gray-500" />
+                        </a>
+                      </td>
+                      <td className="py-3 text-white font-medium max-w-md truncate">{c.message}</td>
+                      <td className="py-3 text-gray-400">{c.author}</td>
+                      <td className="py-3 text-gray-400">{new Date(c.date).toLocaleString()}</td>
+                      <td className="py-3 text-right">
+                        <button
+                          onClick={() => handleTriggerDeploy('deploy', c.sha, c.message)}
+                          disabled={deploying}
+                          className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                        >
+                          Deploy This Commit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Deployment History Table */}
-      <div className="bg-surface border border-border p-6 rounded-2xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-400" /> Deployment History ({deployments.length})
-          </h2>
-          <button onClick={fetchProjectData} className="p-1.5 text-gray-400 hover:text-white">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-
-        {deployments.length === 0 ? (
-          <div className="text-center p-8 text-sm text-gray-400">No deployments yet for this project.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border text-gray-400 uppercase text-[10px]">
-                <tr>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Commit SHA</th>
-                  <th className="pb-3">Commit Message</th>
-                  <th className="pb-3">Trigger</th>
-                  <th className="pb-3">Created At</th>
-                  <th className="pb-3 text-right">Logs</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {deployments.map((dep) => (
-                  <tr key={dep.id} className="hover:bg-card/50 transition">
-                    <td className="py-3">
-                      {dep.status === 'SUCCESS' && (
-                        <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-semibold border border-green-500/30">
-                          SUCCESS
-                        </span>
-                      )}
-                      {dep.status === 'BUILDING' && (
-                        <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-semibold border border-blue-500/30 animate-pulse">
-                          BUILDING
-                        </span>
-                      )}
-                      {dep.status === 'QUEUED' && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-400 font-semibold border border-gray-500/30">
-                          QUEUED
-                        </span>
-                      )}
-                      {dep.status === 'FAILED' && (
-                        <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 font-semibold border border-red-500/30">
-                          FAILED
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 font-mono text-gray-300">{dep.commit_sha.substring(0, 7)}</td>
-                    <td className="py-3 text-gray-300 max-w-xs truncate">{dep.commit_message}</td>
-                    <td className="py-3 font-mono text-gray-400">
-                      {dep.trigger === 'PULL_REQUEST' ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/40 text-[10px]">
-                            PR #{dep.pr_number || 1}
-                          </span>
-                          {dep.status === 'SUCCESS' && (
-                            <a
-                              href={`http://localhost:8080/serve/${id}/pr/${dep.pr_number || 1}/`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[10px] text-purple-400 hover:underline font-bold flex items-center gap-0.5"
-                            >
-                              Preview <ExternalLink className="w-2.5 h-2.5" />
-                            </a>
-                          )}
-                        </div>
-                      ) : (
-                        dep.trigger
-                      )}
-                    </td>
-                    <td className="py-3 text-gray-400">{new Date(dep.created_at).toLocaleString()}</td>
-                    <td className="py-3 text-right">
-                      <Link
-                        href={`/projects/${id}/deployments/${dep.id}`}
-                        className="text-blue-400 hover:underline font-semibold flex items-center justify-end gap-1"
-                      >
-                        <Terminal className="w-3.5 h-3.5" /> View Terminal
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* TAB 3: Live CDN Inspector */}
+      {activeTab === 'inspector' && (
+        <div className="bg-surface border border-border p-6 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-400" /> Live CDN Inspector (&quot;Try It&quot;)
+            </h2>
+            <button
+              onClick={handleInspectSite}
+              disabled={inspecting}
+              className="px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-xs font-semibold rounded-lg border border-blue-500/30 transition flex items-center gap-1"
+            >
+              {inspecting ? 'Probing...' : 'Fetch via Gateway (:8080)'}
+            </button>
           </div>
-        )}
-      </div>
+          <p className="text-xs text-gray-400">
+            Probes Gateway load balancer to inspect live response headers (<span className="text-blue-400 font-mono">X-Cache: HIT/MISS</span>, <span className="text-blue-400 font-mono">X-Edge-Node</span>).
+          </p>
+
+          {inspectResult && (
+            <div className="bg-card p-4 rounded-xl border border-border space-y-2 font-mono text-xs">
+              {inspectResult.error ? (
+                <div className="text-red-400">Error: {inspectResult.error}</div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-gray-300">
+                  <div>
+                    <div className="text-gray-500 text-[10px] uppercase">Status</div>
+                    <div className="font-bold text-green-400">{inspectResult.status} OK</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-[10px] uppercase">X-Cache Status</div>
+                    <div className={`font-bold ${inspectResult.cacheStatus === 'HIT' ? 'text-green-400' : 'text-amber-400'}`}>
+                      {inspectResult.cacheStatus}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-[10px] uppercase">Served By Edge</div>
+                    <div className="font-bold text-cyan-400">{inspectResult.edgeNode}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-[10px] uppercase">Response Latency</div>
+                    <div className="font-bold text-white">{inspectResult.latencyMs} ms</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
