@@ -156,7 +156,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Admin Rate Limits list
   fastify.get('/api/admin/rate-limits', async (request, reply) => {
-    const rateLimits = await query(`
+    const rawRateLimits = await query<any>(`
       SELECT 
         r.id, r.client_ip, r.tokens, r.is_blocked, r.blocked_by, r.block_reason,
         COALESCE(rl.total_requests, r.request_count) as request_count
@@ -168,7 +168,22 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
       ) rl ON r.client_ip = rl.client_ip
       ORDER BY r.is_blocked DESC, request_count DESC LIMIT 50
     `);
-    return reply.send({ rateLimits });
+
+    const rateLimits = rawRateLimits.map((r: any) => ({
+      ...r,
+      is_blocked: Boolean(r.is_blocked),
+      tokens: Number(r.tokens || 10),
+      request_count: Number(r.request_count || 0),
+    }));
+
+    return reply.send({
+      policy: {
+        capacity: config.rateLimit.capacity,
+        refillPerSec: config.rateLimit.refillPerSec,
+        windowSeconds: config.rateLimit.windowSeconds,
+      },
+      rateLimits,
+    });
   });
 
   // Admin Block IP
