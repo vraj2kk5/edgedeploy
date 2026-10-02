@@ -415,6 +415,98 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
     });
   });
 
+  // 1-Second Production Rollback
+  fastify.post('/api/projects/:id/rollback', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const projectId = parseInt(id, 10);
+    const project = await findProjectById(projectId);
+
+    if (!project || (request.user!.role !== 'ADMIN' && project.user_id !== request.user!.id)) {
+      return reply.status(404).send({ error: { code: 404, message: 'Project not found' } });
+    }
+
+    const { deploymentId } = (request.body as any) || {};
+    if (!deploymentId) {
+      return reply.status(400).send({ error: { code: 400, message: 'deploymentId is required' } });
+    }
+
+    const targetDeployment = await findDeploymentById(Number(deploymentId));
+    if (!targetDeployment || targetDeployment.project_id !== projectId) {
+      return reply.status(404).send({ error: { code: 404, message: 'Target deployment not found' } });
+    }
+
+    if (targetDeployment.status !== 'SUCCESS') {
+      return reply.status(400).send({ error: { code: 400, message: 'Can only roll back to a successful deployment' } });
+    }
+
+    // Update active deployment id instantly
+    await updateProject(projectId, { active_deployment_id: targetDeployment.id });
+
+    // Broadcast cache purge signal across all edge nodes
+    for (const port of config.ports.edgePorts) {
+      try {
+        await fetch(`http://localhost:${port}/internal/purge`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-token': config.security.internalApiToken,
+          },
+          body: JSON.stringify({ scope: 'project', projectId }),
+        });
+      } catch (err) {}
+    }
+
+    // Log audit log
+    await addDeploymentLog(
+      targetDeployment.id,
+      999,
+      'SYSTEM',
+      `[ROLLBACK] Project "${project.name}" rolled back to Deployment #${targetDeployment.id} by ${request.user!.email}`
+    );
+
+    const updatedProject = await findProjectById(projectId);
+    return reply.send({
+      message: `Production site rolled back to Deployment #${targetDeployment.id} in <1s!`,
+      project: updatedProject,
+      deployment: targetDeployment,
+    });
+  });
+
+  // Get WAF Security & Threat Inspector Summary
+  fastify.get('/api/projects/:id/waf-summary', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const projectId = parseInt(id, 10);
+    const project = await findProjectById(projectId);
+
+    if (!project || (request.user!.role !== 'ADMIN' && project.user_id !== request.user!.id)) {
+      return reply.status(404).send({ error: { code: 404, message: 'Project not found' } });
+    }
+
+    const totalBlocked = await queryOne<{ count: number }>(
+      'SELECT COUNT(*) as count FROM WafLogs WHERE project_id = ? OR project_id IS NULL',
+      [projectId]
+    );
+
+    const threatsByType = await query<{ threat_type: string; count: number }>(
+      'SELECT threat_type, COUNT(*) as count FROM WafLogs WHERE project_id = ? OR project_id IS NULL GROUP BY threat_type ORDER BY count DESC',
+      [projectId]
+    );
+
+    const recentLogs = await query<any>(
+      'SELECT * FROM WafLogs WHERE project_id = ? OR project_id IS NULL ORDER BY created_at DESC LIMIT 10',
+      [projectId]
+    );
+
+    return reply.send({
+      summary: {
+        wafStatus: 'ACTIVE 🛡️',
+        totalBlocked: Number(totalBlocked?.count || 0),
+        threatsByType,
+        recentThreats: recentLogs,
+      },
+    });
+  });
+
   // List deployments for project
   fastify.get('/api/projects/:id/deployments', async (request, reply) => {
     const { id } = request.params as { id: string };

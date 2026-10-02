@@ -217,6 +217,43 @@ app.get('/health', async () => {
   return { status: 'healthy', service: 'gateway', healthyEdges: edgeNodePool.filter((n) => n.status === 'HEALTHY').length };
 });
 
+interface WafCheckResult {
+  isThreat: boolean;
+  threatType?: 'SQL_INJECTION' | 'XSS_ATTACK' | 'PATH_TRAVERSAL' | 'MALICIOUS_BOT';
+}
+
+function checkWafThreats(url: string, headers: Record<string, any>, body: any): WafCheckResult {
+  const decodedUrl = decodeURIComponent(url);
+  const userAgent = (headers['user-agent'] || '').toLowerCase();
+  const bodyString = typeof body === 'string' ? body : JSON.stringify(body || '');
+
+  // 1. SQL Injection (SQLi) Detection
+  const sqliPattern = /(\b(UNION|SELECT|INSERT|DELETE|DROP|UPDATE|ALTER)\b|' OR '1'='1|' OR 1=1|--|#)/i;
+  if (sqliPattern.test(decodedUrl) || sqliPattern.test(bodyString)) {
+    return { isThreat: true, threatType: 'SQL_INJECTION' };
+  }
+
+  // 2. Cross-Site Scripting (XSS) Detection
+  const xssPattern = /(<script\b|javascript:|onerror\s*=|onload\s*=|document\.cookie)/i;
+  if (xssPattern.test(decodedUrl) || xssPattern.test(bodyString)) {
+    return { isThreat: true, threatType: 'XSS_ATTACK' };
+  }
+
+  // 3. Path Traversal Detection
+  const traversalPattern = /(\.\.\/|\.\.\\)/;
+  if (traversalPattern.test(decodedUrl)) {
+    return { isThreat: true, threatType: 'PATH_TRAVERSAL' };
+  }
+
+  // 4. Malicious Bot Scraper Detection
+  const botPattern = /(sqlmap|nikto|dirbuster|nmap|netsparker|w3af|havij|pangolin)/i;
+  if (botPattern.test(userAgent)) {
+    return { isThreat: true, threatType: 'MALICIOUS_BOT' };
+  }
+
+  return { isThreat: false };
+}
+
 // Proxy HTTP routes explicitly (excluding OPTIONS to avoid cors plugin collision)
 app.route({
   method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'],
@@ -256,6 +293,41 @@ app.route({
             reason: rlResult.reason,
           },
         });
+    }
+
+    // Step 1.5: EDGE WEB APPLICATION FIREWALL (WAF)
+    const wafCheck = checkWafThreats(request.url, request.headers, request.body);
+    if (wafCheck.isThreat) {
+      logger.warn(`[WAF_BLOCKED] IP ${clientIp} Path: ${request.url} Threat: ${wafCheck.threatType}`);
+
+      execute(
+        `INSERT INTO WafLogs (client_ip, project_id, threat_type, path, user_agent, created_at)
+         VALUES (?, NULL, ?, ?, ?, NOW())`,
+        [clientIp, wafCheck.threatType, request.url, (request.headers['user-agent'] as string) || '']
+      ).catch(() => {});
+
+      bufferRequestLog({
+        ts: new Date(),
+        client_ip: clientIp,
+        project_id: null,
+        domain: request.headers.host || 'localhost',
+        path: request.url,
+        method: request.method,
+        status_code: 403,
+        latency_ms: Date.now() - startTime,
+        edge_node_id: null,
+        cache_result: 'NONE',
+        bytes: 0,
+      });
+
+      return reply.status(403).send({
+        error: {
+          code: 403,
+          message: `Blocked by Edge WAF Threat Protection (${wafCheck.threatType})`,
+          threatType: wafCheck.threatType,
+          clientIp,
+        },
+      });
     }
 
     // Step 2: PROJECT RESOLUTION (by Host header or path prefix)

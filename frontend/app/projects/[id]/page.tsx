@@ -13,10 +13,22 @@ import {
   Clock,
   Terminal,
   Activity,
+import {
+  Rocket,
+  RefreshCw,
+  Trash2,
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Terminal,
+  Activity,
   Zap,
   GitPullRequest,
   GitBranch,
   GitMerge,
+  Shield,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,6 +43,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
 
   const [gitCommits, setGitCommits] = useState<any[]>([]);
   const [loadingCommits, setLoadingCommits] = useState(false);
+  const [wafSummary, setWafSummary] = useState<any>(null);
 
   // Try It Inspector State
   const [inspectResult, setInspectResult] = useState<any>(null);
@@ -70,6 +83,15 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
         const commitData = await commitRes.json();
         setGitCommits(commitData.commits || []);
       }
+
+      // Fetch WAF Security Threat Summary
+      const wafRes = await fetch(`/api/projects/${id}/waf-summary`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (wafRes.ok) {
+        const wafData = await wafRes.json();
+        setWafSummary(wafData.summary);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -81,6 +103,34 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     fetchProjectData();
   }, [id]);
+
+  const handleRollback = async (deploymentId: number) => {
+    if (!window.confirm(`Are you sure you want to instantly roll back production to Deployment #${deploymentId}?`)) return;
+
+    setDeploying(true);
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
+    try {
+      const res = await fetch(`/api/projects/${id}/rollback`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ deploymentId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Production site rolled back successfully in <1s!');
+        fetchProjectData();
+      } else {
+        alert(data.error?.message || 'Failed to roll back deployment');
+      }
+    } catch (err: any) {
+      alert('Error rolling back: ' + err.message);
+    } finally {
+      setDeploying(false);
+    }
+  };
 
   const handleTriggerDeploy = async (type: 'deploy' | 'redeploy', commitSha?: string, commitMessage?: string) => {
     setDeploying(true);
@@ -356,22 +406,28 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                     <tr key={dep.id} className="hover:bg-card/50 transition">
                       <td className="py-3">
                         {dep.status === 'SUCCESS' && (
-                          <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-semibold border border-green-500/30">
-                            SUCCESS
-                          </span>
+                          dep.id === project.active_deployment_id ? (
+                            <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 font-bold border border-green-500/40 text-[10px] inline-flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-ping"></span> Active Production 🟢
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-semibold border border-green-500/30 text-[10px]">
+                              SUCCESS
+                            </span>
+                          )
                         )}
                         {dep.status === 'BUILDING' && (
-                          <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-semibold border border-blue-500/30 animate-pulse">
+                          <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-semibold border border-blue-500/30 animate-pulse text-[10px]">
                             BUILDING...
                           </span>
                         )}
                         {dep.status === 'QUEUED' && (
-                          <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-semibold border border-amber-500/30">
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-semibold border border-amber-500/30 text-[10px]">
                             QUEUED
                           </span>
                         )}
                         {dep.status === 'FAILED' && (
-                          <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 font-semibold border border-red-500/30">
+                          <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 font-semibold border border-red-500/30 text-[10px]">
                             FAILED
                           </span>
                         )}
@@ -417,12 +473,24 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                       </td>
                       <td className="py-3 text-gray-400">{new Date(dep.created_at).toLocaleString()}</td>
                       <td className="py-3 text-right">
-                        <Link
-                          href={`/projects/${id}/deployments/${dep.id}`}
-                          className="text-blue-400 hover:underline font-mono text-xs font-semibold flex items-center justify-end gap-1"
-                        >
-                          <Terminal className="w-3.5 h-3.5" /> View Terminal
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          {dep.status === 'SUCCESS' && dep.id !== project.active_deployment_id && !dep.pr_number && (
+                            <button
+                              onClick={() => handleRollback(dep.id)}
+                              disabled={deploying}
+                              className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1 transition disabled:opacity-50"
+                              title="Instantly roll back live site to this deployment"
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" /> Rollback
+                            </button>
+                          )}
+                          <Link
+                            href={`/projects/${id}/deployments/${dep.id}`}
+                            className="text-blue-400 hover:underline font-mono text-xs font-semibold flex items-center gap-1"
+                          >
+                            <Terminal className="w-3.5 h-3.5" /> View Terminal
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -579,6 +647,70 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
               )}
             </div>
           )}
+
+          {/* Edge WAF & Threat Security Card */}
+          <div className="bg-card p-5 rounded-xl border border-border space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-green-400" />
+                <h3 className="text-sm font-bold text-white">Edge Web Application Firewall (WAF)</h3>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+                WAF Shield {wafSummary?.wafStatus || 'ACTIVE 🛡️'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+              <div className="bg-surface p-3 rounded-lg border border-border">
+                <div className="text-gray-400 text-[10px] uppercase">Threats Intercepted</div>
+                <div className="text-lg font-bold text-red-400">{wafSummary?.totalBlocked || 0} Attacks</div>
+              </div>
+              <div className="bg-surface p-3 rounded-lg border border-border">
+                <div className="text-gray-400 text-[10px] uppercase">Active Protection Rules</div>
+                <div className="text-xs font-bold text-cyan-400 mt-1">SQLi, XSS, Traversal, Bots</div>
+              </div>
+              <div className="bg-surface p-3 rounded-lg border border-border flex items-center justify-between">
+                <div>
+                  <div className="text-gray-400 text-[10px] uppercase">Test WAF Shield</div>
+                  <div className="text-xs font-bold text-gray-300">Simulate Threat</div>
+                </div>
+                <button
+                  onClick={() => window.open(`http://localhost:8080/serve/${id}/?sqli=UNION+SELECT`, '_blank')}
+                  className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg font-semibold text-[11px] transition"
+                >
+                  Test Block 🛡️
+                </button>
+              </div>
+            </div>
+
+            {wafSummary?.recentThreats && wafSummary.recentThreats.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <h4 className="text-xs font-bold text-gray-400 uppercase">Recent Intercepted Threat Logs</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-[11px] font-mono">
+                    <thead className="border-b border-border text-gray-500 uppercase text-[9px]">
+                      <tr>
+                        <th className="pb-1">Client IP</th>
+                        <th className="pb-1">Threat Type</th>
+                        <th className="pb-1">Target Path</th>
+                        <th className="pb-1 text-right">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {wafSummary.recentThreats.map((t: any) => (
+                        <tr key={t.id}>
+                          <td className="py-1.5 text-cyan-400">{t.client_ip}</td>
+                          <td className="py-1.5 text-red-400 font-bold">{t.threat_type}</td>
+                          <td className="py-1.5 text-gray-300 truncate max-w-xs">{t.path}</td>
+                          <td className="py-1.5 text-right text-gray-500">{new Date(t.created_at).toLocaleTimeString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
