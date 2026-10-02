@@ -10,8 +10,11 @@ export default function AdminEdgesPage() {
   const [purging, setPurging] = useState(false);
 
   const fetchEdgeData = async () => {
-    const token = localStorage.getItem('edgedeploy_token');
-    if (!token) return;
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const [edgeRes, healthRes] = await Promise.all([
@@ -41,7 +44,7 @@ export default function AdminEdgesPage() {
   const handleGlobalPurge = async () => {
     if (!confirm('Are you sure you want to purge cache across ALL edge nodes?')) return;
     setPurging(true);
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     try {
       const res = await fetch('/api/admin/cache/purge', {
         method: 'POST',

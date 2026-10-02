@@ -10,8 +10,11 @@ export default function AdminRateLimitsPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchRateLimits = async () => {
-    const token = localStorage.getItem('edgedeploy_token');
-    if (!token) return;
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch('/api/admin/rate-limits', {
@@ -35,7 +38,7 @@ export default function AdminRateLimitsPage() {
   const handleBlockIp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ipToBlock) return;
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     try {
       const res = await fetch('/api/admin/rate-limits/block', {
         method: 'POST',
@@ -55,7 +58,7 @@ export default function AdminRateLimitsPage() {
   };
 
   const handleUnblockIp = async (ip: string) => {
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     try {
       const res = await fetch('/api/admin/rate-limits/unblock', {
         method: 'POST',
@@ -85,13 +88,22 @@ export default function AdminRateLimitsPage() {
       {/* Manual IP Block Form */}
       <form onSubmit={handleBlockIp} className="bg-surface border border-border p-6 rounded-2xl flex flex-col md:flex-row gap-4 items-end">
         <div className="flex-1">
-          <label className="block text-xs font-semibold text-gray-300 mb-1">Target Client IP</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-semibold text-gray-300">Target Client IP</label>
+            <button
+              type="button"
+              onClick={() => setIpToBlock('127.0.0.1')}
+              className="text-[11px] text-cyan-400 hover:underline font-mono"
+            >
+              + Target Localhost (127.0.0.1)
+            </button>
+          </div>
           <input
             type="text"
             required
             value={ipToBlock}
             onChange={(e) => setIpToBlock(e.target.value)}
-            placeholder="e.g. 192.168.1.100"
+            placeholder="e.g. 127.0.0.1"
             className="w-full px-4 py-2 bg-card border border-border rounded-xl text-white text-sm font-mono"
           />
         </div>
