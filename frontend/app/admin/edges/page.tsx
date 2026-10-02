@@ -133,6 +133,27 @@ export default function AdminEdgesPage() {
                   <span>{hNode.details?.uptime ? `${Math.floor(hNode.details.uptime)} s` : 'N/A'}</span>
                 </div>
               </div>
+
+              {/* Cached Files Breakdown */}
+              {hNode.details?.cachedItems && hNode.details.cachedItems.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                    Cached Files ({hNode.details.cachedItems.length}):
+                  </p>
+                  <div className="space-y-1 bg-card/60 p-2.5 rounded-xl border border-border text-[11px] font-mono">
+                    {hNode.details.cachedItems.map((item: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center text-gray-300 border-b border-border/40 last:border-0 pb-1 last:pb-0">
+                        <span className="text-cyan-400 truncate max-w-[170px]" title={item.cacheKey}>
+                          {item.cacheKey}
+                        </span>
+                        <span className="text-gray-400 text-[10px]">
+                          ({(item.sizeBytes / 1024).toFixed(1)} KB, {item.hitCount} hits)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

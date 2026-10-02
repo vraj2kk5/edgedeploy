@@ -118,7 +118,13 @@ async function evictOldestEntryIfNeeded() {
 // Health endpoint
 app.get('/health', async () => {
   await execute('UPDATE EdgeNodes SET status = "HEALTHY", last_heartbeat = NOW() WHERE port = ?', [port]);
-  return { status: 'healthy', nodeId, port, region, cacheEntries: memoryCache.size, uptime: process.uptime() };
+  const cachedItems = Array.from(memoryCache.values()).map((item) => ({
+    cacheKey: item.cacheKey,
+    projectId: item.projectId,
+    sizeBytes: item.sizeBytes,
+    hitCount: item.hitCount,
+  }));
+  return { status: 'healthy', nodeId, port, region, cacheEntries: memoryCache.size, cachedItems, uptime: process.uptime() };
 });
 
 app.get('/', async () => {
