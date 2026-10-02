@@ -155,6 +155,10 @@ export default function AdminRateLimitsPage() {
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
                         BLOCKED ({rl.blocked_by || 'AUTO'})
                       </span>
+                    ) : Number(rl.tokens) < 1 || rl.block_reason === 'Rate limit exceeded' ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        RATE LIMITED (429)
+                      </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
                         ALLOWED

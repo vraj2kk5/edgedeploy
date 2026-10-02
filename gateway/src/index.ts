@@ -80,9 +80,9 @@ function checkRateLimit(clientIp: string): { allowed: boolean; retryAfterSeconds
 
     // Record offender in DB asynchronously
     execute(
-      `INSERT INTO RateLimits (client_ip, tokens, window_start, request_count, is_blocked, block_reason, blocked_by)
-       VALUES (?, ?, NOW(), 1, FALSE, 'Rate limit exceeded', 'AUTO')
-       ON DUPLICATE KEY UPDATE request_count = request_count + 1, tokens = ?`,
+      `INSERT INTO RateLimits (client_ip, endpoint, tokens, window_start, request_count, is_blocked, block_reason, blocked_by)
+       VALUES (?, '', ?, NOW(), 1, FALSE, 'Rate limit exceeded', 'AUTO')
+       ON DUPLICATE KEY UPDATE request_count = request_count + 1, tokens = ?, block_reason = IF(is_blocked, block_reason, 'Rate limit exceeded')`,
       [clientIp, bucket.tokens, bucket.tokens]
     ).catch(() => {});
 
