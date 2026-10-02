@@ -254,81 +254,89 @@ function checkWafThreats(url: string, headers: Record<string, any>, body: any): 
   return { isThreat: false };
 }
 
+app.addHook('onRequest', async (request, reply) => {
+  const startTime = Date.now();
+  const rawIp = (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || request.ip || '127.0.0.1';
+  let clientIp = rawIp.replace(/^::ffff:/, '');
+  if (clientIp === '::1') clientIp = '127.0.0.1';
+
+  (request as any).clientIp = clientIp;
+  (request as any).startTime = startTime;
+
+  // Step 1: TOKEN BUCKET RATE LIMITER (Runs First)
+  const rlResult = checkRateLimit(clientIp);
+  if (!rlResult.allowed) {
+    bufferRequestLog({
+      ts: new Date(),
+      client_ip: clientIp,
+      project_id: null,
+      domain: request.headers.host || 'localhost',
+      path: request.url,
+      method: request.method,
+      status_code: 429,
+      latency_ms: Date.now() - startTime,
+      edge_node_id: null,
+      cache_result: 'NONE',
+      bytes: 0,
+    });
+
+    return reply
+      .status(429)
+      .headers({
+        'Retry-After': String(rlResult.retryAfterSeconds),
+      })
+      .send({
+        error: {
+          code: 429,
+          message: `Too many requests. Retry in ${rlResult.retryAfterSeconds} seconds.`,
+          reason: rlResult.reason,
+        },
+      });
+  }
+
+  // Step 1.5: EDGE WEB APPLICATION FIREWALL (WAF)
+  const wafCheck = checkWafThreats(request.url, request.headers, request.body);
+  if (wafCheck.isThreat) {
+    logger.warn(`[WAF_BLOCKED] IP ${clientIp} Path: ${request.url} Threat: ${wafCheck.threatType}`);
+
+    execute(
+      `INSERT INTO WafLogs (client_ip, project_id, threat_type, path, user_agent, created_at)
+       VALUES (?, NULL, ?, ?, ?, NOW())`,
+      [clientIp, wafCheck.threatType, request.url, (request.headers['user-agent'] as string) || '']
+    ).catch(() => {});
+
+    bufferRequestLog({
+      ts: new Date(),
+      client_ip: clientIp,
+      project_id: null,
+      domain: request.headers.host || 'localhost',
+      path: request.url,
+      method: request.method,
+      status_code: 403,
+      latency_ms: Date.now() - startTime,
+      edge_node_id: null,
+      cache_result: 'NONE',
+      bytes: 0,
+    });
+
+    return reply.status(403).send({
+      error: {
+        code: 403,
+        message: `Blocked by Edge WAF Threat Protection (${wafCheck.threatType})`,
+        threatType: wafCheck.threatType,
+        clientIp,
+      },
+    });
+  }
+});
+
 // Proxy HTTP routes explicitly (excluding OPTIONS to avoid cors plugin collision)
 app.route({
   method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'],
   url: '*',
   handler: async (request, reply) => {
-    const startTime = Date.now();
-    const rawIp = (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || request.ip || '127.0.0.1';
-    let clientIp = rawIp.replace(/^::ffff:/, '');
-    if (clientIp === '::1') clientIp = '127.0.0.1';
-
-    // Step 1: TOKEN BUCKET RATE LIMITER (Runs First)
-    const rlResult = checkRateLimit(clientIp);
-    if (!rlResult.allowed) {
-      bufferRequestLog({
-        ts: new Date(),
-        client_ip: clientIp,
-        project_id: null,
-        domain: request.headers.host || 'localhost',
-        path: request.url,
-        method: request.method,
-        status_code: 429,
-        latency_ms: Date.now() - startTime,
-        edge_node_id: null,
-        cache_result: 'NONE',
-        bytes: 0,
-      });
-
-      return reply
-        .status(429)
-        .headers({
-          'Retry-After': String(rlResult.retryAfterSeconds),
-        })
-        .send({
-          error: {
-            code: 429,
-            message: `Too many requests. Retry in ${rlResult.retryAfterSeconds} seconds.`,
-            reason: rlResult.reason,
-          },
-        });
-    }
-
-    // Step 1.5: EDGE WEB APPLICATION FIREWALL (WAF)
-    const wafCheck = checkWafThreats(request.url, request.headers, request.body);
-    if (wafCheck.isThreat) {
-      logger.warn(`[WAF_BLOCKED] IP ${clientIp} Path: ${request.url} Threat: ${wafCheck.threatType}`);
-
-      execute(
-        `INSERT INTO WafLogs (client_ip, project_id, threat_type, path, user_agent, created_at)
-         VALUES (?, NULL, ?, ?, ?, NOW())`,
-        [clientIp, wafCheck.threatType, request.url, (request.headers['user-agent'] as string) || '']
-      ).catch(() => {});
-
-      bufferRequestLog({
-        ts: new Date(),
-        client_ip: clientIp,
-        project_id: null,
-        domain: request.headers.host || 'localhost',
-        path: request.url,
-        method: request.method,
-        status_code: 403,
-        latency_ms: Date.now() - startTime,
-        edge_node_id: null,
-        cache_result: 'NONE',
-        bytes: 0,
-      });
-
-      return reply.status(403).send({
-        error: {
-          code: 403,
-          message: `Blocked by Edge WAF Threat Protection (${wafCheck.threatType})`,
-          threatType: wafCheck.threatType,
-          clientIp,
-        },
-      });
-    }
+    const startTime = (request as any).startTime || Date.now();
+    const clientIp = (request as any).clientIp || '127.0.0.1';
 
     // Step 2: PROJECT RESOLUTION (by Host header or path prefix)
     const host = request.headers.host || '';
