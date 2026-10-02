@@ -417,59 +417,68 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
 
   // 1-Second Production Rollback
   fastify.post('/api/projects/:id/rollback', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const projectId = parseInt(id, 10);
-    const project = await findProjectById(projectId);
+    try {
+      const { id } = request.params as { id: string };
+      const projectId = parseInt(id, 10);
+      const project = await findProjectById(projectId);
 
-    if (!project || (request.user!.role !== 'ADMIN' && project.user_id !== request.user!.id)) {
-      return reply.status(404).send({ error: { code: 404, message: 'Project not found' } });
-    }
+      if (!project || (request.user!.role !== 'ADMIN' && project.user_id !== request.user!.id)) {
+        return reply.status(404).send({ error: { code: 404, message: 'Project not found' } });
+      }
 
-    const { deploymentId } = (request.body as any) || {};
-    if (!deploymentId) {
-      return reply.status(400).send({ error: { code: 400, message: 'deploymentId is required' } });
-    }
+      const { deploymentId } = (request.body as any) || {};
+      if (!deploymentId) {
+        return reply.status(400).send({ error: { code: 400, message: 'deploymentId is required' } });
+      }
 
-    const targetDeployment = await findDeploymentById(Number(deploymentId));
-    if (!targetDeployment || targetDeployment.project_id !== projectId) {
-      return reply.status(404).send({ error: { code: 404, message: 'Target deployment not found' } });
-    }
+      const targetId = parseInt(String(deploymentId), 10);
+      const targetDeployment = await findDeploymentById(targetId);
+      if (!targetDeployment || targetDeployment.project_id !== projectId) {
+        return reply.status(404).send({ error: { code: 404, message: 'Target deployment not found' } });
+      }
 
-    if (targetDeployment.status !== 'SUCCESS') {
-      return reply.status(400).send({ error: { code: 400, message: 'Can only roll back to a successful deployment' } });
-    }
+      if (targetDeployment.status !== 'SUCCESS') {
+        return reply.status(400).send({ error: { code: 400, message: 'Can only roll back to a successful deployment' } });
+      }
 
-    // Update active deployment id instantly
-    await updateProject(projectId, { active_deployment_id: targetDeployment.id });
+      // Update active deployment id instantly
+      await updateProject(projectId, { active_deployment_id: targetDeployment.id });
 
-    // Broadcast cache purge signal across all edge nodes
-    for (const port of config.ports.edgePorts) {
+      // Broadcast cache purge signal across all edge nodes
+      for (const port of config.ports.edgePorts) {
+        try {
+          await fetch(`http://localhost:${port}/internal/purge`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-internal-token': config.security.internalApiToken,
+            },
+            body: JSON.stringify({ scope: 'project', projectId }),
+          });
+        } catch (err) {}
+      }
+
+      // Log audit log safely (non-blocking)
       try {
-        await fetch(`http://localhost:${port}/internal/purge`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-internal-token': config.security.internalApiToken,
-          },
-          body: JSON.stringify({ scope: 'project', projectId }),
-        });
-      } catch (err) {}
+        const logs = await getDeploymentLogs(targetDeployment.id);
+        const maxSeq = logs.length > 0 ? Math.max(...logs.map((l) => l.seq)) + 1 : 1;
+        await addDeploymentLog(
+          targetDeployment.id,
+          maxSeq,
+          'SYSTEM',
+          `[ROLLBACK] Project "${project.name}" rolled back to Deployment #${targetDeployment.id} by ${request.user!.email}`
+        );
+      } catch (logErr) {}
+
+      const updatedProject = await findProjectById(projectId);
+      return reply.send({
+        message: `Production site rolled back to Deployment #${targetDeployment.id} in <1s!`,
+        project: updatedProject,
+        deployment: targetDeployment,
+      });
+    } catch (err: any) {
+      return reply.status(500).send({ error: { code: 500, message: `Rollback failed: ${err.message}` } });
     }
-
-    // Log audit log
-    await addDeploymentLog(
-      targetDeployment.id,
-      999,
-      'SYSTEM',
-      `[ROLLBACK] Project "${project.name}" rolled back to Deployment #${targetDeployment.id} by ${request.user!.email}`
-    );
-
-    const updatedProject = await findProjectById(projectId);
-    return reply.send({
-      message: `Production site rolled back to Deployment #${targetDeployment.id} in <1s!`,
-      project: updatedProject,
-      deployment: targetDeployment,
-    });
   });
 
   // Get WAF Security & Threat Inspector Summary
