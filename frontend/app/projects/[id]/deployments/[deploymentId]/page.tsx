@@ -3,7 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Terminal, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, ExternalLink } from 'lucide-react';
+import { Terminal, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, ExternalLink, GitMerge } from 'lucide-react';
 
 export default function DeploymentTerminalPage({
   params,
@@ -15,6 +15,7 @@ export default function DeploymentTerminalPage({
   const [deployment, setDeployment] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [merging, setMerging] = useState(false);
 
   const fetchLogs = async () => {
     const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
@@ -40,6 +41,38 @@ export default function DeploymentTerminalPage({
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMergePr = async () => {
+    if (!deployment?.pr_number) return;
+    if (!window.confirm(`Are you sure you want to merge PR #${deployment.pr_number} into main and deploy to Production?`)) return;
+
+    setMerging(true);
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
+    try {
+      const res = await fetch(`/api/projects/${id}/merge-pr`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prNumber: deployment.pr_number,
+          commitSha: deployment.commit_sha,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.deployment) {
+        alert(data.message || 'Successfully merged into main! Redirecting to Production Deployment...');
+        router.push(`/projects/${id}/deployments/${data.deployment.id}`);
+      } else {
+        alert(data.error?.message || 'Failed to merge PR');
+      }
+    } catch (err: any) {
+      alert('Error merging PR: ' + err.message);
+    } finally {
+      setMerging(false);
     }
   };
 
@@ -85,14 +118,23 @@ export default function DeploymentTerminalPage({
           {deployment?.status === 'SUCCESS' && (
             <>
               {deployment?.pr_number ? (
-                <a
-                  href={`http://localhost:8080/serve/${id}/pr/${deployment.pr_number}/`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1.5 transition shadow-lg shadow-purple-600/20"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" /> Visit PR #{deployment.pr_number} Preview ↗
-                </a>
+                <>
+                  <a
+                    href={`http://localhost:8080/serve/${id}/pr/${deployment.pr_number}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1.5 transition shadow-lg shadow-purple-600/20"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Visit PR #{deployment.pr_number} Preview ↗
+                  </a>
+                  <button
+                    onClick={handleMergePr}
+                    disabled={merging}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-green-600 hover:bg-green-500 text-white flex items-center gap-1.5 transition shadow-lg shadow-green-600/20 disabled:opacity-50"
+                  >
+                    <GitMerge className="w-3.5 h-3.5" /> {merging ? 'Merging...' : 'Merge PR to Main 🔀'}
+                  </button>
+                </>
               ) : (
                 <a
                   href={`http://localhost:8080/serve/${id}/`}
@@ -158,18 +200,29 @@ export default function DeploymentTerminalPage({
               </p>
             </div>
           </div>
-          <a
-            href={
-              deployment.pr_number
-                ? `http://localhost:8080/serve/${id}/pr/${deployment.pr_number}/`
-                : `http://localhost:8080/serve/${id}/`
-            }
-            target="_blank"
-            rel="noreferrer"
-            className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-green-600/20"
-          >
-            <ExternalLink className="w-4 h-4" /> Open Site
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={
+                deployment.pr_number
+                  ? `http://localhost:8080/serve/${id}/pr/${deployment.pr_number}/`
+                  : `http://localhost:8080/serve/${id}/`
+              }
+              target="_blank"
+              rel="noreferrer"
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-purple-600/20"
+            >
+              <ExternalLink className="w-4 h-4" /> Open Site
+            </a>
+            {deployment.pr_number && (
+              <button
+                onClick={handleMergePr}
+                disabled={merging}
+                className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-green-600/20 disabled:opacity-50"
+              >
+                <GitMerge className="w-4 h-4" /> {merging ? 'Merging...' : 'Merge to Main 🔀'}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

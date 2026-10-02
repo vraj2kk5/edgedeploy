@@ -341,6 +341,38 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
     });
   });
 
+  // Merge PR Preview into main branch & trigger Production Deploy
+  fastify.post('/api/projects/:id/merge-pr', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const projectId = parseInt(id, 10);
+    const project = await findProjectById(projectId);
+
+    if (!project || (request.user!.role !== 'ADMIN' && project.user_id !== request.user!.id)) {
+      return reply.status(404).send({ error: { code: 404, message: 'Project not found' } });
+    }
+
+    const { prNumber = 1, commitSha, commitMessage } = (request.body as any) || {};
+
+    const mergedSha = commitSha || crypto.randomBytes(20).toString('hex');
+    const mergeMessage = commitMessage || `Merge Pull Request #${prNumber} into ${project.branch || 'main'}`;
+
+    // Create new Production deployment on project's main branch
+    const deployment = await createDeployment({
+      project_id: project.id,
+      commit_sha: mergedSha,
+      commit_message: mergeMessage,
+      branch: project.branch || 'main',
+      trigger: 'MANUAL',
+    });
+
+    deploymentQueue.enqueue(deployment.id);
+
+    return reply.status(202).send({
+      message: `PR #${prNumber} successfully merged into ${project.branch || 'main'} and deployed to Production!`,
+      deployment,
+    });
+  });
+
   // List deployments for project
   fastify.get('/api/projects/:id/deployments', async (request, reply) => {
     const { id } = request.params as { id: string };

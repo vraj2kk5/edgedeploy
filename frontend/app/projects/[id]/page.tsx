@@ -16,6 +16,7 @@ import {
   Zap,
   GitPullRequest,
   GitBranch,
+  GitMerge,
 } from 'lucide-react';
 
 export default function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -123,6 +124,33 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const handleMergePr = async (prNumber: number, commitSha?: string) => {
+    if (!window.confirm(`Are you sure you want to merge PR #${prNumber} into main and deploy to Production?`)) return;
+
+    setDeploying(true);
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
+    try {
+      const res = await fetch(`/api/projects/${id}/merge-pr`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prNumber, commitSha }),
+      });
+      const data = await res.json();
+      if (res.ok && data.deployment) {
+        router.push(`/projects/${id}/deployments/${data.deployment.id}`);
+      } else {
+        alert(data.error?.message || 'Failed to merge PR');
+      }
+    } catch (err: any) {
+      alert('Error merging PR: ' + err.message);
     } finally {
       setDeploying(false);
     }
@@ -352,19 +380,29 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                       <td className="py-3 text-white font-medium max-w-xs truncate">{dep.commit_message || 'No commit message'}</td>
                       <td className="py-3 font-mono text-gray-400">
                         {dep.trigger === 'PULL_REQUEST' ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/40 text-[10px]">
                               PR #{dep.pr_number || 1}
                             </span>
                             {dep.status === 'SUCCESS' && (
-                              <a
-                                href={`http://localhost:8080/serve/${id}/pr/${dep.pr_number || 1}/`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[10px] text-purple-400 hover:underline font-bold flex items-center gap-0.5"
-                              >
-                                Preview <ExternalLink className="w-2.5 h-2.5" />
-                              </a>
+                              <>
+                                <a
+                                  href={`http://localhost:8080/serve/${id}/pr/${dep.pr_number || 1}/`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] text-purple-400 hover:underline font-bold flex items-center gap-0.5"
+                                >
+                                  Preview <ExternalLink className="w-2.5 h-2.5" />
+                                </a>
+                                <button
+                                  onClick={() => handleMergePr(dep.pr_number || 1, dep.commit_sha)}
+                                  disabled={deploying}
+                                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-green-600/30 hover:bg-green-600 text-green-300 hover:text-white border border-green-500/30 flex items-center gap-1 transition disabled:opacity-50"
+                                  title="Merge PR into Main & Deploy to Production"
+                                >
+                                  <GitMerge className="w-2.5 h-2.5" /> Merge to Main 🔀
+                                </button>
+                              </>
                             )}
                           </div>
                         ) : (
