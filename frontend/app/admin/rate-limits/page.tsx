@@ -153,9 +153,9 @@ export default function AdminRateLimitsPage() {
                   <td className="p-4">
                     {rl.is_blocked ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
-                        BLOCKED ({rl.blocked_by || 'AUTO'})
+                        BLOCKED ({rl.blocked_by || 'ADMIN'})
                       </span>
-                    ) : Number(rl.tokens) < 1 || rl.block_reason === 'Rate limit exceeded' ? (
+                    ) : Number(rl.tokens) < 1.0 ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
                         RATE LIMITED (429)
                       </span>
@@ -165,7 +165,13 @@ export default function AdminRateLimitsPage() {
                       </span>
                     )}
                   </td>
-                  <td className="p-4 text-gray-400">{rl.block_reason || '-'}</td>
+                  <td className="p-4 text-gray-400">
+                    {rl.is_blocked
+                      ? rl.block_reason || 'Blocked by Admin'
+                      : Number(rl.tokens) < 1.0
+                      ? 'Tokens depleted'
+                      : 'Allowed'}
+                  </td>
                   <td className="p-4 text-right">
                     {rl.is_blocked && (
                       <button

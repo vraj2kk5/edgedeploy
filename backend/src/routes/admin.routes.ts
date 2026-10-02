@@ -162,7 +162,7 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     await execute(
-      `UPDATE RateLimits SET is_blocked = FALSE, block_reason = NULL, blocked_by = NULL WHERE client_ip = ?`,
+      `UPDATE RateLimits SET is_blocked = FALSE, tokens = 10, block_reason = NULL, blocked_by = NULL WHERE client_ip = ?`,
       [ip]
     );
 
