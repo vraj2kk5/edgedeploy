@@ -500,31 +500,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                         <td className="py-3 text-gray-400">{c.author}</td>
                         <td className="py-3 text-gray-400">{new Date(c.date).toLocaleString()}</td>
                         <td className="py-3 text-right">
-                          {c.pr_number ? (
-                            c.message?.startsWith('[MERGED]') ? (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/20 text-green-300 border border-green-500/30 rounded-lg text-xs font-semibold">
-                                <GitMerge className="w-3.5 h-3.5 text-green-400" /> Merged to Main
-                              </span>
-                            ) : (
-                              <div className="flex items-center justify-end gap-1.5">
-                                <a
-                                  href={`http://localhost:8080/serve/${id}/pr/${c.pr_number}/`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-lg text-xs font-semibold flex items-center gap-1"
-                                >
-                                  Preview <ExternalLink className="w-3 h-3" />
-                                </a>
-                                <button
-                                  onClick={() => handleMergePr(c.pr_number, c.sha)}
-                                  disabled={deploying}
-                                  className="px-2.5 py-1 bg-green-600/30 hover:bg-green-600 text-green-300 hover:text-white border border-green-500/30 rounded-lg text-xs font-semibold flex items-center gap-1 transition disabled:opacity-50"
-                                >
-                                  <GitMerge className="w-3 h-3" /> Merge 🔀
-                                </button>
-                              </div>
-                            )
-                          ) : isDeployed ? (
+                          {isDeployed ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-xs font-semibold">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Deployed
                             </span>
@@ -534,11 +510,15 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
                             </span>
                           ) : (
                             <button
-                              onClick={() => handleTriggerDeploy('deploy', c.sha, c.message)}
+                              onClick={() =>
+                                c.pr_number
+                                  ? handleMergePr(c.pr_number, c.sha)
+                                  : handleTriggerDeploy('deploy', c.sha, c.message)
+                              }
                               disabled={deploying}
                               className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-semibold transition disabled:opacity-50"
                             >
-                              {isFailed ? 'Redeploy Commit' : 'Deploy This Commit'}
+                              Deploy This Commit
                             </button>
                           )}
                         </td>

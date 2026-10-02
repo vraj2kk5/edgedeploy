@@ -253,7 +253,7 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
     const existingShas = new Set(commits.map((c) => c.sha));
     for (const dep of prDeployments) {
       if (!existingShas.has(dep.commit_sha)) {
-        commits.unshift({
+        commits.push({
           sha: dep.commit_sha,
           shortSha: dep.commit_sha.substring(0, 7),
           message: dep.commit_message,
@@ -268,6 +268,9 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
     }
+
+    // Sort strictly by date descending (newest on top)
+    commits.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return reply.send({ commits });
   });
