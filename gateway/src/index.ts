@@ -280,9 +280,17 @@ app.route({
     // Path prefix fallback: /_site/<slugOrId>/... or /site/<slugOrId>/... or /serve/<slugOrId>/...
     const pathPrefixMatch = request.url.match(/^\/(_site|site|serve)\/([^\/]+)(.*)$/);
     if (pathPrefixMatch) {
+      const prefix = pathPrefixMatch[1];
       const slugOrId = pathPrefixMatch[2];
-      targetPath = pathPrefixMatch[3] || '/';
-      
+      const restPath = pathPrefixMatch[3];
+
+      // Auto-redirect /serve/6 -> /serve/6/ to ensure relative CSS/JS assets resolve correctly
+      if (restPath === '' || restPath === undefined) {
+        return reply.redirect(`/${prefix}/${slugOrId}/`, 302);
+      }
+
+      targetPath = restPath || '/';
+
       if (/^\d+$/.test(slugOrId)) {
         const proj = await queryOne<{ id: number; slug: string }>('SELECT id, slug FROM Projects WHERE id = ?', [parseInt(slugOrId, 10)]);
         if (proj) {
