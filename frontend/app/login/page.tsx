@@ -23,10 +23,12 @@ export default function LoginPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState('');
   const [resetLink, setResetLink] = useState('');
+  const [forgotIsError, setForgotIsError] = useState(false);
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotMsg('');
+    setForgotIsError(false);
     setResetLink('');
     setForgotLoading(true);
 
@@ -38,7 +40,8 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error?.message || 'Failed to process forgot password request');
+        setForgotIsError(true);
+        throw new Error(data.error?.message || 'Account not found');
       }
       setForgotMsg(data.message);
       if (data.resetLink) {
@@ -193,20 +196,37 @@ export default function LoginPage() {
             </p>
 
             {forgotMsg && (
-              <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-300 text-xs space-y-2">
-                <div>{forgotMsg}</div>
-                {resetLink && (
-                  <div className="pt-2 border-t border-blue-500/20">
-                    <span className="font-semibold text-white">Reset Link: </span>
-                    <a
-                      href={resetLink}
-                      className="text-cyan-400 underline break-all font-mono"
-                    >
-                      {resetLink}
-                    </a>
+              forgotIsError ? (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                    <span>{forgotMsg}</span>
                   </div>
-                )}
-              </div>
+                  <div className="pt-1.5 border-t border-red-500/20 text-right">
+                    <Link
+                      href="/signup"
+                      className="text-blue-400 hover:text-blue-300 font-medium underline text-xs"
+                    >
+                      Click here to Sign Up →
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-300 text-xs space-y-2">
+                  <div>{forgotMsg}</div>
+                  {resetLink && (
+                    <div className="pt-2 border-t border-blue-500/20">
+                      <span className="font-semibold text-white">Reset Link: </span>
+                      <a
+                        href={resetLink}
+                        className="text-cyan-400 underline break-all font-mono"
+                      >
+                        {resetLink}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )
             )}
 
             <form onSubmit={handleForgotSubmit} className="space-y-4">

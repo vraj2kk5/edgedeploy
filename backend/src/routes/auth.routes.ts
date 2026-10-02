@@ -141,10 +141,9 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
     const { email } = parseResult.data;
     const user = await findUserByEmail(email);
 
-    // Always respond with success to prevent user enumeration
     if (!user) {
-      return reply.send({
-        message: 'If an account exists with that email, a password reset link has been generated.',
+      return reply.status(404).send({
+        error: { code: 404, message: 'No account exists with this email address. Please sign up to continue.' },
       });
     }
 
