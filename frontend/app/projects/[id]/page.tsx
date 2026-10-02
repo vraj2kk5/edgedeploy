@@ -15,6 +15,7 @@ import {
   Activity,
   Zap,
   GitPullRequest,
+  GitBranch,
 } from 'lucide-react';
 
 export default function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,9 +28,8 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   const [deploying, setDeploying] = useState(false);
   const [purging, setPurging] = useState(false);
 
-  // Try It Inspector State
-  const [inspectResult, setInspectResult] = useState<any>(null);
-  const [inspecting, setInspecting] = useState(false);
+  const [gitCommits, setGitCommits] = useState<any[]>([]);
+  const [loadingCommits, setLoadingCommits] = useState(false);
 
   const fetchProjectData = async () => {
     const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
@@ -54,10 +54,21 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
         const depData = await depRes.json();
         setDeployments(depData.deployments || []);
       }
+
+      // Fetch live Git Commits from repository
+      setLoadingCommits(true);
+      const commitRes = await fetch(`/api/projects/${id}/commits`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (commitRes.ok) {
+        const commitData = await commitRes.json();
+        setGitCommits(commitData.commits || []);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+      setLoadingCommits(false);
     }
   };
 
@@ -65,13 +76,17 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
     fetchProjectData();
   }, [id]);
 
-  const handleTriggerDeploy = async (type: 'deploy' | 'redeploy') => {
+  const handleTriggerDeploy = async (type: 'deploy' | 'redeploy', commitSha?: string, commitMessage?: string) => {
     setDeploying(true);
     const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     try {
       const res = await fetch(`/api/projects/${id}/${type}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ commitSha, commitMessage }),
       });
       const data = await res.json();
       if (res.ok && data.deployment) {
@@ -284,6 +299,65 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
           </div>
         )}
       </div>
+
+      {/* Recent Git Commits from Repository */}
+      {gitCommits.length > 0 && (
+        <div className="bg-surface border border-border p-6 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <GitBranch className="w-5 h-5 text-purple-400" /> Recent Git Commits ({gitCommits.length})
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">Live commits fetched from linked GitHub repository ({project?.branch || 'main'})</p>
+            </div>
+            <button
+              onClick={fetchProjectData}
+              disabled={loadingCommits}
+              className="p-1.5 text-gray-400 hover:text-white"
+              title="Refresh Commits"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingCommits ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-border text-gray-400 uppercase text-[10px]">
+                <tr>
+                  <th className="pb-3">SHA</th>
+                  <th className="pb-3">Commit Message</th>
+                  <th className="pb-3">Author</th>
+                  <th className="pb-3">Date</th>
+                  <th className="pb-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {gitCommits.map((c) => (
+                  <tr key={c.sha} className="hover:bg-card/50 transition">
+                    <td className="py-3 font-mono font-bold text-cyan-400">
+                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+                        {c.shortSha} <ExternalLink className="w-3 h-3 text-gray-500" />
+                      </a>
+                    </td>
+                    <td className="py-3 text-white font-medium max-w-md truncate">{c.message}</td>
+                    <td className="py-3 text-gray-400">{c.author}</td>
+                    <td className="py-3 text-gray-400">{new Date(c.date).toLocaleString()}</td>
+                    <td className="py-3 text-right">
+                      <button
+                        onClick={() => handleTriggerDeploy('deploy', c.sha, c.message)}
+                        disabled={deploying}
+                        className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                      >
+                        Deploy This Commit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Deployment History Table */}
       <div className="bg-surface border border-border p-6 rounded-2xl space-y-4">

@@ -195,8 +195,41 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
     return reply.send({ repository: repo });
   });
 
-  // Trigger manual deployment
-  fastify.post('/api/projects/:id/deploy', async (request, reply) => {
+  // Helper to fetch live commits from GitHub API
+  async function fetchCommitsFromGitHub(repoUrl: string, branch: string = 'main') {
+    try {
+      if (!repoUrl || !repoUrl.startsWith('https://github.com/')) return [];
+      const match = repoUrl.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+?)(\.git)?$/);
+      if (!match) return [];
+      const owner = match[1];
+      const name = match[2];
+
+      const res = await fetch(`https://api.github.com/repos/${owner}/${name}/commits?sha=${branch}&per_page=10`, {
+        headers: {
+          'User-Agent': 'EdgeDeploy-App',
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      if (!res.ok) return [];
+      const data: any = await res.json();
+      if (!Array.isArray(data)) return [];
+
+      return data.map((c: any) => ({
+        sha: c.sha,
+        shortSha: c.sha.substring(0, 7),
+        message: c.commit?.message ? c.commit.message.split('\n')[0] : 'Commit',
+        author: c.commit?.author?.name || c.author?.login || 'Git User',
+        date: c.commit?.author?.date || new Date().toISOString(),
+        url: c.html_url,
+      }));
+    } catch (err) {
+      return [];
+    }
+  }
+
+  // Get project commits from GitHub repository
+  fastify.get('/api/projects/:id/commits', async (request, reply) => {
     const { id } = request.params as { id: string };
     const projectId = parseInt(id, 10);
     const project = await findProjectById(projectId);
@@ -205,11 +238,47 @@ export async function projectsRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.status(404).send({ error: { code: 404, message: 'Project not found' } });
     }
 
-    const commitSha = crypto.randomBytes(20).toString('hex');
+    const repo = await findRepositoryByProjectId(project.id);
+    if (!repo || !repo.repo_url) {
+      return reply.send({ commits: [] });
+    }
+
+    const commits = await fetchCommitsFromGitHub(repo.repo_url, project.branch || 'main');
+    return reply.send({ commits });
+  });
+
+  // Trigger manual deployment
+  fastify.post('/api/projects/:id/deploy', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { commitSha: customSha, commitMessage: customMsg } = (request.body as any) || {};
+    const projectId = parseInt(id, 10);
+    const project = await findProjectById(projectId);
+
+    if (!project || (request.user!.role !== 'ADMIN' && project.user_id !== request.user!.id)) {
+      return reply.status(404).send({ error: { code: 404, message: 'Project not found' } });
+    }
+
+    const repo = await findRepositoryByProjectId(project.id);
+    let commitSha = customSha;
+    let commitMessage = customMsg;
+
+    if (!commitSha || !commitMessage) {
+      if (repo && repo.repo_url) {
+        const commits = await fetchCommitsFromGitHub(repo.repo_url, project.branch || 'main');
+        if (commits.length > 0) {
+          commitSha = commits[0].sha;
+          commitMessage = commits[0].message;
+        }
+      }
+    }
+
+    if (!commitSha) commitSha = crypto.randomBytes(20).toString('hex');
+    if (!commitMessage) commitMessage = `Manual deployment triggered by ${request.user!.email}`;
+
     const deployment = await createDeployment({
       project_id: project.id,
       commit_sha: commitSha,
-      commit_message: `Manual deployment triggered by ${request.user!.email}`,
+      commit_message: commitMessage,
       branch: project.branch || 'main',
       trigger: 'MANUAL',
     });
