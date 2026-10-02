@@ -20,6 +20,7 @@ import {
   findDeploymentById,
   listDeploymentsByProject,
   getDeploymentLogs,
+  addDeploymentLog,
 } from '../repositories/deployments.repo.js';
 import { deploymentQueue } from '../services/queue.service.js';
 import { config, query, queryOne } from '@edgedeploy/shared';

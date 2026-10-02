@@ -1,4 +1,4 @@
-import nodemailer, { Transporter } from 'nodemailer';
+import nodemailer from 'nodemailer';
 
 interface SendPasswordResetEmailParams {
   toEmail: string;
@@ -6,7 +6,7 @@ interface SendPasswordResetEmailParams {
   resetToken: string;
 }
 
-let testAccountTransporter: Transporter | null = null;
+let testAccountTransporter: any = null;
 
 async function getTransporter() {
   const smtpHost = process.env.SMTP_HOST;
