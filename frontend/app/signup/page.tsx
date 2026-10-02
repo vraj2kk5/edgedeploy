@@ -1,12 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Zap, AlertCircle } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem('edgedeploy_token');
+    if (token) {
+      router.push('/dashboard');
+    }
+
+    const handleStorageChange = () => {
+      const updatedToken = localStorage.getItem('edgedeploy_token');
+      if (updatedToken) {
+        router.push('/dashboard');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [router]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
