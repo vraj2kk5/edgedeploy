@@ -17,7 +17,7 @@ export default function DeploymentTerminalPage({
   const [loading, setLoading] = useState(true);
 
   const fetchLogs = async () => {
-    const token = localStorage.getItem('edgedeploy_token');
+    const token = sessionStorage.getItem('edgedeploy_token') || localStorage.getItem('edgedeploy_token');
     if (!token) return;
 
     try {
