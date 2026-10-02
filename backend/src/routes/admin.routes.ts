@@ -131,7 +131,18 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Admin Rate Limits list
   fastify.get('/api/admin/rate-limits', async (request, reply) => {
-    const rateLimits = await query('SELECT * FROM RateLimits ORDER BY is_blocked DESC, request_count DESC LIMIT 50');
+    const rateLimits = await query(`
+      SELECT 
+        r.id, r.client_ip, r.tokens, r.is_blocked, r.blocked_by, r.block_reason,
+        COALESCE(rl.total_requests, r.request_count) as request_count
+      FROM RateLimits r
+      LEFT JOIN (
+        SELECT client_ip, COUNT(*) as total_requests 
+        FROM RequestLogs 
+        GROUP BY client_ip
+      ) rl ON r.client_ip = rl.client_ip
+      ORDER BY r.is_blocked DESC, request_count DESC LIMIT 50
+    `);
     return reply.send({ rateLimits });
   });
 
