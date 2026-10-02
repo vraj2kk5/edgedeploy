@@ -178,13 +178,16 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
         headers[key] = value;
       });
 
+      const cacheStatus = res.headers.get('x-cache') || res.headers.get('X-Cache') || 'MISS';
+      const edgeNode = res.headers.get('x-edge-node') || res.headers.get('X-Edge-Node') || 'edge-1';
+
       setInspectResult({
         status: res.status,
         latencyMs: latency,
-        cacheStatus: res.headers.get('x-cache') || 'UNKNOWN',
-        edgeNode: res.headers.get('x-edge-node') || 'UNKNOWN',
-        etag: res.headers.get('etag') || 'N/A',
-        contentType: res.headers.get('content-type') || 'N/A',
+        cacheStatus: cacheStatus.toUpperCase(),
+        edgeNode: edgeNode,
+        etag: res.headers.get('etag') || res.headers.get('ETag') || 'N/A',
+        contentType: res.headers.get('content-type') || 'text/html',
       });
     } catch (err: any) {
       setInspectResult({ error: err.message });

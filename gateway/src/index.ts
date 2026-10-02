@@ -208,7 +208,10 @@ setInterval(flushRequestLogs, 3000);
 // -------------------------------------------------------------
 // 4. GATEWAY REQUEST PIPELINE ROUTER
 // -------------------------------------------------------------
-app.register(cors, { origin: true });
+app.register(cors, {
+  origin: true,
+  exposedHeaders: ['x-cache', 'X-Cache', 'x-edge-node', 'X-Edge-Node', 'x-served-by', 'X-Served-By', 'etag', 'retry-after', 'content-type'],
+});
 
 app.get('/health', async () => {
   return { status: 'healthy', service: 'gateway', healthyEdges: edgeNodePool.filter((n) => n.status === 'HEALTHY').length };
@@ -389,6 +392,7 @@ app.route({
           'X-Cache': cacheResult,
           'X-Edge-Node': edgeNode.name,
           'X-Served-By': `EdgeDeploy-Gateway (${edgeNode.name}:${edgeNode.region})`,
+          'Access-Control-Expose-Headers': 'X-Cache, X-Edge-Node, X-Served-By, ETag, Content-Type, Retry-After',
           ETag: etag,
           'Cache-Control': edgeRes.headers.get('cache-control') || 'public, max-age=60',
         })
