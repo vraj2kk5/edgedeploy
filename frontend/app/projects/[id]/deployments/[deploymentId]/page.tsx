@@ -3,7 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Terminal, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Terminal, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, ExternalLink } from 'lucide-react';
 
 export default function DeploymentTerminalPage({
   params,
@@ -83,13 +83,39 @@ export default function DeploymentTerminalPage({
 
         <div className="flex items-center gap-3">
           {deployment?.status === 'SUCCESS' && (
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/30 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> SUCCESS
-            </span>
+            <>
+              {deployment?.pr_number ? (
+                <a
+                  href={`http://localhost:8080/serve/${id}/pr/${deployment.pr_number}/`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1.5 transition shadow-lg shadow-purple-600/20"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Visit PR #{deployment.pr_number} Preview ↗
+                </a>
+              ) : (
+                <a
+                  href={`http://localhost:8080/serve/${id}/`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition shadow-lg shadow-blue-600/20"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Visit Live Site ↗
+                </a>
+              )}
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/30 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> SUCCESS
+              </span>
+            </>
           )}
           {deployment?.status === 'BUILDING' && (
             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 animate-pulse flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" /> BUILDING...
+            </span>
+          )}
+          {deployment?.status === 'QUEUED' && (
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" /> QUEUED...
             </span>
           )}
           {deployment?.status === 'FAILED' && (
@@ -97,11 +123,55 @@ export default function DeploymentTerminalPage({
               <XCircle className="w-3.5 h-3.5" /> FAILED
             </span>
           )}
-          <button onClick={fetchLogs} className="p-2 bg-card text-gray-300 rounded-xl border border-border">
+          <button onClick={fetchLogs} className="p-2 bg-card text-gray-300 rounded-xl border border-border" title="Refresh Logs">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {deployment?.status === 'SUCCESS' && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/20 text-green-400 rounded-xl">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                {deployment.pr_number ? `PR Preview #${deployment.pr_number} Ready!` : 'Deployment Successfully Live!'}
+              </h3>
+              <p className="text-xs text-gray-400">
+                URL:{' '}
+                <a
+                  href={
+                    deployment.pr_number
+                      ? `http://localhost:8080/serve/${id}/pr/${deployment.pr_number}/`
+                      : `http://localhost:8080/serve/${id}/`
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-400 hover:underline font-mono"
+                >
+                  {deployment.pr_number
+                    ? `http://localhost:8080/serve/${id}/pr/${deployment.pr_number}/`
+                    : `http://localhost:8080/serve/${id}/`}
+                </a>
+              </p>
+            </div>
+          </div>
+          <a
+            href={
+              deployment.pr_number
+                ? `http://localhost:8080/serve/${id}/pr/${deployment.pr_number}/`
+                : `http://localhost:8080/serve/${id}/`
+            }
+            target="_blank"
+            rel="noreferrer"
+            className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-green-600/20"
+          >
+            <ExternalLink className="w-4 h-4" /> Open Site
+          </a>
+        </div>
+      )}
 
       {/* Terminal Output Panel */}
       <div className="bg-black/90 border border-gray-800 rounded-2xl p-6 font-mono text-xs overflow-hidden shadow-2xl">
